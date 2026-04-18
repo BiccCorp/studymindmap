@@ -1,426 +1,1387 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyOS v2</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <style>
-    :root {
-      --primary: #6366f1; --secondary: #a855f7; --accent: #10b981;
-      --bg-gradient: linear-gradient(135deg, #0b1120, #151b2b, #1e293b);
-      --font-main: 'Inter', system-ui, sans-serif; --font-accent: 'JetBrains Mono', monospace;
-      --glass: rgba(255,255,255,0.08); --glass-border: rgba(255,255,255,0.15);
-      --text: #e2e8f0; --shadow: 0 10px 40px rgba(0,0,0,0.5);
-      --radius: 14px;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body { font-family: var(--font-main); color: var(--text); background: var(--bg-gradient); min-height: 100vh; overflow: hidden; transition: background 0.8s ease; }
-    #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyOS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    /* DOCK & DRAWER */
-    #dock { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(14px); padding: 10px 18px; border-radius: 20px; display: flex; gap: 10px; box-shadow: var(--shadow); z-index: 1000; }
-    .dock-btn { width: 46px; height: 46px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: var(--text); font-size: 18px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-    .dock-btn:hover, .dock-btn.active { background: var(--primary); transform: translateY(-5px); }
-    .dock-btn.active { border-color: var(--secondary); }
-    #tools-drawer { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(12px); padding: 8px; border-radius: 12px; display: flex; gap: 6px; opacity: 0; pointer-events: none; transition: all 0.2s; box-shadow: var(--shadow); }
-    #tools-drawer.open { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
-    .tool-toggle { background: rgba(255,255,255,0.15); border: none; color: var(--text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; white-space: nowrap; }
-    .tool-toggle:hover { background: var(--secondary); }
+:root {
+  --primary: #7c3aed;
+  --secondary: #06b6d4;
+  --accent: #f59e0b;
+  --bg: #0a0a0f;
+  --surface: rgba(255,255,255,0.04);
+  --surface-hover: rgba(255,255,255,0.08);
+  --glass: rgba(255,255,255,0.06);
+  --glass-border: rgba(255,255,255,0.1);
+  --text: #f0f0f5;
+  --text-muted: rgba(240,240,245,0.45);
+  --font-main: 'Space Grotesk', sans-serif;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-lg: 0 24px 64px rgba(0,0,0,0.6);
+  --blob-speed: 1;
+}
 
-    /* MAIN VIEWS */
-    #views { position: absolute; top: 0; left: 0; width: 100%; height: calc(100vh - 80px); padding: 24px; overflow-y: auto; }
-    .view { display: none; max-width: 1100px; margin: 0 auto; }
-    .view.active { display: block; animation: fadeSlide 0.3s ease; }
-    @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* FLOATING WINDOWS */
-    #windows-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    .window { position: absolute; background: rgba(15,23,42,0.88); border: 1px solid var(--glass-border); backdrop-filter: blur(16px); border-radius: var(--radius); box-shadow: var(--shadow); pointer-events: auto; min-width: 280px; overflow: hidden; display: flex; flex-direction: column; }
-    .window-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0,0,0,0.35); cursor: grab; border-bottom: 1px solid var(--glass-border); }
-    .window-header:active { cursor: grabbing; }
-    .window-title { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
-    .win-close { width: 20px; height: 20px; border-radius: 50%; border: none; background: #ef4444; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; transition: 0.15s; }
-    .win-close:hover { transform: scale(1.1); background: #dc2626; }
-    .window-body { padding: 12px; flex: 1; overflow-y: auto; max-height: 400px; }
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-main);
+  overflow: hidden;
+  user-select: none;
+}
 
-    /* MINDMAP VIEWPORT & WORLD */
-    #mm-viewport { position: relative; width: 100%; height: 65vh; background: rgba(0,0,0,0.15); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--glass-border); cursor: grab; }
-    #mm-viewport.panning { cursor: grabbing; }
-    #mm-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; width: 0; height: 0; }
-    #mm-svg { position: absolute; top: -4000px; left: -4000px; width: 8000px; height: 8000px; pointer-events: none; }
-    #mm-svg line { stroke: var(--primary); stroke-width: 2; stroke-linecap: round; opacity: 0.8; }
-    .mm-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+/* ── CANVAS BG ── */
+#bg-canvas {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+}
 
-    /* NODES & HOVER MENU */
-    .node { position: absolute; min-width: 100px; padding: 8px 10px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 10px; cursor: move; font-size: 13px; text-align: center; transition: box-shadow 0.2s, transform 0.15s; }
-    .node.selected { border-color: var(--secondary); box-shadow: 0 0 14px rgba(168,85,247,0.5); transform: scale(1.04); }
-    .node.flashcard-blur { filter: blur(6px); cursor: pointer; }
-    .node-menu { position: absolute; background: #1e293b; border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px; box-shadow: var(--shadow); z-index: 500; display: none; pointer-events: auto; }
-    .node-menu.visible { display: block; }
-    .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 6px; }
-    .color-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
-    .color-dot:hover { transform: scale(1.2); border-color: white; }
-    .menu-btn { width: 100%; padding: 5px; background: rgba(255,255,255,0.1); border: none; color: var(--text); border-radius: 6px; cursor: pointer; font-size: 11px; }
-    .menu-btn:hover { background: #ef4444; }
+/* ── VIEWS ── */
+#app { position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column; }
 
-    /* UI ELEMENTS */
-    .input-row { display: flex; gap: 8px; margin: 8px 0; }
-    .input-row input, .input-row textarea { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); color: var(--text); padding: 8px; border-radius: 8px; font-family: inherit; }
-    .input-row textarea { height: 100px; resize: vertical; }
-    .btn { background: var(--primary); color: white; border: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: 0.15s; }
-    .btn:hover { background: #5558e6; transform: translateY(-1px); }
-    .btn.outline { background: transparent; border: 1px solid var(--glass-border); color: var(--text); }
-    .btn.outline:hover { background: rgba(255,255,255,0.1); }
-    .check-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .check-item.done span { text-decoration: line-through; opacity: 0.5; }
-    .pomo-display { font-size: 28px; font-family: var(--font-accent); text-align: center; margin: 10px 0; letter-spacing: 2px; }
-    .pomo-status { font-size: 12px; text-align: center; color: #94a3b8; margin-bottom: 8px; }
-    .pomo-controls { display: flex; justify-content: center; gap: 8px; }
-    .setting-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; font-size: 13px; }
-    .color-picker { width: 30px; height: 30px; border: none; background: transparent; cursor: pointer; }
-  </style>
+.view {
+  flex: 1; display: none; flex-direction: column;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity .3s ease, transform .3s ease;
+  overflow: hidden;
+}
+.view.active { display: flex; }
+.view.visible { opacity: 1; transform: translateY(0); }
+
+/* ── MINDMAP VIEW ── */
+#view-mindmap { position: relative; }
+
+#mm-toolbar {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 50;
+  display: flex; gap: 8px;
+  background: rgba(10,10,15,0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 40px;
+  padding: 8px 14px;
+  box-shadow: var(--shadow);
+}
+
+#mm-toolbar button {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 13px; font-family: var(--font-main);
+  padding: 5px 12px; border-radius: 20px; cursor: pointer;
+  transition: all .2s; white-space: nowrap;
+}
+#mm-toolbar button:hover { background: var(--surface-hover); color: var(--text); }
+#mm-toolbar button.active { background: var(--primary); color: #fff; }
+
+#mm-viewport {
+  position: absolute; inset: 0;
+  overflow: hidden; cursor: grab;
+}
+#mm-viewport.grabbing { cursor: grabbing; }
+
+#mm-world {
+  position: absolute; top: 0; left: 0;
+  width: 4000px; height: 4000px;
+  transform-origin: 0 0;
+}
+
+svg#mm-links {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}
+
+svg#mm-links line {
+  stroke: var(--primary);
+  stroke-width: 2;
+  stroke-opacity: 0.5;
+  stroke-dasharray: 5 3;
+}
+
+.mm-node {
+  position: absolute;
+  min-width: 110px; max-width: 220px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--glass-border);
+  background: rgba(20,20,30,0.88);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  font-size: 13px; font-weight: 500;
+  cursor: grab;
+  text-align: center;
+  word-break: break-word;
+  transition: border-color .2s, box-shadow .2s, filter .3s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 10;
+}
+.mm-node:hover { border-color: var(--primary); z-index: 20; }
+.mm-node.drag-over { border-color: var(--secondary); box-shadow: 0 0 0 2px var(--secondary); }
+.mm-node.flashcard-blur { filter: blur(6px); }
+
+/* ── NODE HOVER MENU ── */
+#node-hover-menu {
+  position: fixed;
+  z-index: 9999;
+  background: rgba(12,12,18,0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: var(--shadow-lg);
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 200px;
+}
+#node-hover-menu.visible { display: flex; }
+
+.color-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;
+}
+.color-swatch {
+  width: 28px; height: 28px; border-radius: 6px;
+  border: 1.5px solid transparent; cursor: pointer;
+  transition: transform .15s, border-color .15s;
+}
+.color-swatch:hover { transform: scale(1.15); border-color: #fff; }
+
+.menu-btn {
+  background: rgba(255,80,80,0.1);
+  border: 1px solid rgba(255,80,80,0.2);
+  color: #ff6060; font-family: var(--font-main);
+  font-size: 12px; padding: 6px 10px;
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: background .2s;
+}
+.menu-btn:hover { background: rgba(255,80,80,0.2); }
+
+/* ── SETTINGS VIEW ── */
+#view-settings {
+  padding: 60px 40px 100px;
+  overflow-y: auto;
+  align-items: center;
+}
+
+.settings-card {
+  width: 100%; max-width: 560px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  margin-bottom: 20px;
+}
+.settings-card h2 {
+  font-size: 15px; font-weight: 600;
+  color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  gap: 16px;
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row label { font-size: 14px; color: var(--text); flex: 1; }
+
+.setting-row input[type="color"] {
+  width: 40px; height: 32px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: none; cursor: pointer; padding: 2px;
+}
+.setting-row select, .setting-row input[type="range"] {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text); font-family: var(--font-main);
+  padding: 6px 10px; font-size: 13px; cursor: pointer;
+}
+.setting-row input[type="range"] { padding: 0; width: 120px; accent-color: var(--primary); }
+
+.btn-danger {
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.25);
+  color: #f87171; font-family: var(--font-main);
+  font-size: 13px; font-weight: 500;
+  padding: 10px 20px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: all .2s; margin-top: 8px;
+}
+.btn-danger:hover { background: rgba(239,68,68,0.22); }
+
+/* ── DOCK ── */
+#dock {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  z-index: 200;
+  display: flex; gap: 6px;
+  background: rgba(10,10,15,0.85);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 50px;
+  padding: 8px 10px;
+  box-shadow: var(--shadow-lg);
+}
+
+.dock-btn {
+  width: 46px; height: 46px;
+  border: none; border-radius: 50%;
+  background: none; cursor: pointer;
+  font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s, transform .15s;
+  position: relative;
+}
+.dock-btn:hover { background: var(--surface-hover); transform: scale(1.1); }
+.dock-btn.active { background: var(--primary); }
+
+/* ── TOOLS DRAWER ── */
+#tools-drawer {
+  position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%) translateY(12px);
+  z-index: 190;
+  display: flex; gap: 8px;
+  background: rgba(10,10,15,0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 40px;
+  padding: 8px 12px;
+  box-shadow: var(--shadow);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s, transform .25s;
+}
+#tools-drawer.open { opacity: 1; pointer-events: all; transform: translateX(-50%) translateY(0); }
+
+.tool-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 13px;
+  font-family: var(--font-main); font-weight: 500;
+  padding: 6px 14px; border-radius: 20px;
+  transition: all .2s; white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+.tool-btn:hover { background: var(--surface-hover); color: var(--text); }
+.tool-btn.active { background: var(--primary); color: #fff; }
+
+/* ── FLOATING WINDOWS ── */
+.float-win {
+  position: fixed;
+  background: rgba(10,10,18,0.9);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  display: none;
+  flex-direction: column;
+  z-index: 300;
+  min-width: 260px;
+  overflow: hidden;
+}
+.float-win.visible { display: flex; }
+
+.win-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--glass-border);
+  cursor: move;
+  gap: 8px;
+}
+.win-header span { font-size: 13px; font-weight: 600; flex: 1; }
+.win-close {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 16px; cursor: pointer; line-height: 1;
+  transition: color .2s; padding: 2px 6px; border-radius: 4px;
+}
+.win-close:hover { color: #ff6060; background: rgba(255,96,96,0.1); }
+
+.win-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+/* ── POMODORO ── */
+#win-pomodoro { width: 260px; }
+.pomo-display {
+  text-align: center; padding: 20px 0 8px;
+}
+.pomo-time {
+  font-size: 48px; font-weight: 700; letter-spacing: -2px;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.pomo-phase { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.pomo-cycle { font-size: 11px; color: var(--text-muted); }
+.pomo-controls { display: flex; gap: 8px; }
+.pomo-btn {
+  flex: 1; padding: 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: var(--surface); color: var(--text);
+  font-family: var(--font-main); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all .2s;
+}
+.pomo-btn:hover { background: var(--primary); border-color: var(--primary); }
+.pomo-settings { display: flex; gap: 8px; }
+.pomo-input-group { flex: 1; }
+.pomo-input-group label { font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px; }
+.pomo-input-group input {
+  width: 100%; background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: var(--font-main); font-size: 13px;
+  padding: 6px 8px; text-align: center;
+}
+
+/* ── RADIO ── */
+#win-radio { width: 300px; }
+.radio-url {
+  display: flex; gap: 6px;
+}
+.radio-url input {
+  flex: 1; background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: var(--font-main); font-size: 12px; padding: 8px 10px;
+}
+.radio-url input::placeholder { color: var(--text-muted); }
+.radio-play {
+  padding: 8px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--primary); background: rgba(124,58,237,0.15);
+  color: var(--primary); font-family: var(--font-main); font-size: 13px;
+  cursor: pointer; transition: all .2s; white-space: nowrap;
+}
+.radio-play:hover { background: var(--primary); color: #fff; }
+.radio-status { font-size: 11px; color: var(--text-muted); min-height: 14px; }
+.radio-vol { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.radio-vol input { flex: 1; accent-color: var(--secondary); }
+
+/* ── NOTEPAD ── */
+#win-notepad { width: 320px; }
+#notepad-area {
+  width: 100%; height: 220px; resize: none;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; line-height: 1.6; padding: 10px 12px;
+  outline: none;
+}
+#notepad-area:focus { border-color: var(--primary); }
+
+/* ── CHECKLIST ── */
+#win-checklist { width: 300px; }
+.check-add { display: flex; gap: 6px; }
+.check-add input {
+  flex: 1; background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: var(--font-main); font-size: 13px; padding: 7px 10px;
+}
+.check-add input::placeholder { color: var(--text-muted); }
+.check-add button {
+  padding: 7px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--primary); background: rgba(124,58,237,0.15);
+  color: var(--primary); font-size: 16px; cursor: pointer; transition: all .2s;
+}
+.check-add button:hover { background: var(--primary); color: #fff; }
+.check-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
+.check-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition: background .15s;
+}
+.check-item:hover { background: var(--surface-hover); }
+.check-item input[type="checkbox"] { accent-color: var(--primary); cursor: pointer; }
+.check-item span { flex: 1; font-size: 13px; transition: all .2s; }
+.check-item.done span { text-decoration: line-through; color: var(--text-muted); }
+.check-item .del-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 3px;
+  transition: color .2s;
+}
+.check-item .del-btn:hover { color: #ff6060; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.toast {
+  position: fixed; top: 20px; right: 20px; z-index: 9999;
+  background: rgba(20,20,30,0.95);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px; font-size: 13px;
+  box-shadow: var(--shadow);
+  animation: fadeIn .3s ease;
+}
+</style>
 </head>
 <body>
-  <canvas id="bg-canvas"></canvas>
 
-  <nav id="dock">
-    <button class="dock-btn active" data-view="mindmap" title="Mapa Myśli">🧠</button>
-    <button class="dock-btn" id="dock-tools" title="Narzędzia">🛠️</button>
-    <button class="dock-btn" data-view="settings" title="Ustawienia">⚙️</button>
-  </nav>
-  <div id="tools-drawer">
-    <button class="tool-toggle" data-win="pomo-win">⏱ Pomodoro</button>
-    <button class="tool-toggle" data-win="radio-win">📻 Radio</button>
-    <button class="tool-toggle" data-win="notes-win">📝 Notatnik</button>
-    <button class="tool-toggle" data-win="check-win">✅ Checklist</button>
+<canvas id="bg-canvas"></canvas>
+
+<div id="app">
+  <!-- MINDMAP VIEW -->
+  <div id="view-mindmap" class="view active">
+    <div id="mm-toolbar">
+      <button id="btn-add-node">＋ Węzeł</button>
+      <button id="btn-flashcard">🃏 Fiszki</button>
+      <button id="btn-export-json">⬇ JSON</button>
+      <button id="btn-import-json">⬆ JSON</button>
+      <button id="btn-export-png">📷 PNG</button>
+    </div>
+    <div id="mm-viewport">
+      <div id="mm-world">
+        <svg id="mm-links"></svg>
+      </div>
+    </div>
+    <input type="file" id="import-file-input" accept=".json" style="display:none">
   </div>
 
-  <main id="views">
-    <section id="view-mindmap" class="view active">
-      <div class="mm-toolbar">
-        <button class="btn" id="mm-add">+ Nowy węzeł</button>
-        <button class="btn outline" id="mm-flashcard">🃏 Tryb Fiszek</button>
-        <button class="btn outline" id="mm-exp-json">💾 JSON</button>
-        <button class="btn outline" id="mm-imp-json">📂 Import</button>
-        <button class="btn outline" id="mm-exp-png">🖼️ PNG</button>
-        <span style="margin-left:auto;font-size:12px;color:#94a3b8;">Scroll: zoom | Drag tła: pan | Przeciągnij węzeł na inny: połącz</span>
+  <!-- SETTINGS VIEW -->
+  <div id="view-settings" class="view">
+    <div class="settings-card">
+      <h2>🎨 Motyw</h2>
+      <div class="setting-row">
+        <label>Kolor główny</label>
+        <input type="color" id="set-primary" value="#7c3aed">
       </div>
-      <div id="mm-viewport">
-        <div id="mm-world">
-          <svg id="mm-svg"></svg>
-          <!-- Węzły będą dodawane dynamicznie -->
-        </div>
+      <div class="setting-row">
+        <label>Kolor akcentu</label>
+        <input type="color" id="set-secondary" value="#06b6d4">
       </div>
-    </section>
-
-    <section id="view-settings" class="view">
-      <h2>⚙️ Personalizacja</h2>
-      <div class="setting-row"><span>Kolor główny:</span> <input type="color" id="set-primary" class="color-picker" value="#6366f1"></div>
-      <div class="setting-row"><span>Kolor poboczny:</span> <input type="color" id="set-secondary" class="color-picker" value="#a855f7"></div>
-      <div class="setting-row"><span>Font główny:</span> <select id="set-font-main" style="padding:6px;border-radius:6px;background:rgba(0,0,0,0.3);color:white;border:1px solid var(--glass-border);"><option value="'Inter', sans-serif">Inter</option><option value="'Roboto', sans-serif">Roboto</option><option value="serif">Serif</option></select></div>
-      <div class="setting-row"><span>Wizualizator:</span> <input type="range" id="set-vis-speed" min="0.2" max="2.5" step="0.1" value="0.8"></div>
-      <button class="btn" id="set-reset" style="margin-top:16px;background:#ef4444;">🗑️ Resetuj wszystko</button>
-    </section>
-  </main>
-
-  <div id="windows-container"></div>
-  <div id="node-hover-menu" class="node-menu">
-    <div class="color-grid" id="palette-grid"></div>
-    <button class="menu-btn" id="del-links-btn">🗑️ Usuń wszystkie połączenia</button>
+      <div class="setting-row">
+        <label>Czcionka</label>
+        <select id="set-font">
+          <option value="'Space Grotesk', sans-serif">Space Grotesk</option>
+          <option value="'DM Serif Display', serif">DM Serif Display</option>
+          <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+        </select>
+      </div>
+    </div>
+    <div class="settings-card">
+      <h2>✨ Wizualizacja</h2>
+      <div class="setting-row">
+        <label>Prędkość blobów</label>
+        <input type="range" id="set-blob-speed" min="0.1" max="3" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="settings-card">
+      <h2>⚠️ Dane</h2>
+      <button class="btn-danger" id="btn-reset">🗑️ Wyczyść wszystkie dane i przeładuj</button>
+    </div>
   </div>
+</div>
 
-  <script>
-    // === 1. STATE & STORAGE ===
-    const Store = { key: 'studyos_v2', saveDelay: 250, timer: null };
-    Store.state = {
-      windowsOpen: [],
-      mm: { nodes: [{id:1, x:0, y:0, text:'Centrum', color:''}], links: [], zoom: 1, panX: 0, panY: 0 },
-      notes: '', checklist: [],
-      pomo: { work: 25, break: 5, time: 25*60, running: false, mode: 'work', lastTick: Date.now() },
-      radioUrl: '', settings: { primary:'#6366f1', secondary:'#a855f7', fontMain:"'Inter', sans-serif", speed:0.8 }
-    };
-    Store.load = () => { try { const d = localStorage.getItem(Store.key); if(d) Object.assign(Store.state, JSON.parse(d)); } catch(e){} };
-    Store.save = () => { clearTimeout(Store.timer); Store.timer = setTimeout(() => localStorage.setItem(Store.key, JSON.stringify(Store.state)), Store.saveDelay); };
-    Store.load();
+<!-- DOCK -->
+<div id="dock">
+  <button class="dock-btn active" id="dock-mindmap" title="Mapa Myśli">🧠</button>
+  <button class="dock-btn" id="dock-tools" title="Narzędzia">🛠️</button>
+  <button class="dock-btn" id="dock-settings" title="Ustawienia">⚙️</button>
+</div>
 
-    // === 2. WINDOW MANAGER (Toggleable) ===
-    const winContainer = document.getElementById('windows-container');
-    let winZ = 100;
-    const toolDefs = {
-      'pomo-win': { title: '⏱ Pomodoro', x: 60, y: 50, w: 260 },
-      'radio-win': { title: '📻 Radio', x: 340, y: 50, w: 260 },
-      'notes-win': { title: '📝 Notatnik', x: 620, y: 50, w: 280 },
-      'check-win': { title: '✅ Checklist', x: 60, y: 300, w: 260 }
-    };
+<!-- TOOLS DRAWER -->
+<div id="tools-drawer">
+  <button class="tool-btn" data-win="pomodoro">⏱ Pomodoro</button>
+  <button class="tool-btn" data-win="radio">📻 Radio</button>
+  <button class="tool-btn" data-win="notepad">📝 Notatnik</button>
+  <button class="tool-btn" data-win="checklist">✅ Checklista</button>
+</div>
 
-    function toggleWindow(id) {
-      const el = document.getElementById(id);
-      if(el) { el.remove(); Store.state.windowsOpen = Store.state.windowsOpen.filter(w=>w!==id); }
-      else createWindow(id);
-      Store.save();
-    }
-    function createWindow(id) {
-      if(document.getElementById(id)) return;
-      const def = toolDefs[id];
-      const win = document.createElement('div');
-      win.className = 'window'; win.id = id;
-      win.style.cssText = `left:${def.x}px; top:${def.y}px; width:${def.w}px; z-index:${++winZ};`;
-      win.innerHTML = `<div class="window-header"><span class="window-title">${def.title}</span><button class="win-close">✕</button></div><div class="window-body" id="${id}-body"></div>`;
-      winContainer.appendChild(win);
-      Store.state.windowsOpen.push(id);
-      win.querySelector('.win-close').onclick = () => toggleWindow(id);
-      win.onmousedown = () => win.style.zIndex = ++winZ;
-      dragWindow(win);
-      populateToolContent(id);
-    }
-    function dragWindow(win) {
-      const hdr = win.querySelector('.window-header');
-      let isDrag=false, ox, oy;
-      hdr.onmousedown = e => { isDrag=true; ox=e.clientX-win.offsetLeft; oy=e.clientY-win.offsetTop; win.style.zIndex=++winZ; e.preventDefault(); };
-      window.onmousemove = e => { if(!isDrag)return; win.style.left=(e.clientX-ox)+'px'; win.style.top=(e.clientY-oy)+'px'; };
-      window.onmouseup = () => isDrag=false;
-    }
-    function populateToolContent(id) {
-      const body = document.getElementById(`${id}-body`);
-      if(id==='pomo-win') {
-        body.innerHTML = `<div class="pomo-status" id="pomo-mode">Praca</div><div class="pomo-display" id="pomo-time">25:00</div><div class="pomo-controls"><button class="btn" id="pomo-start">▶ Start</button><button class="btn outline" id="pomo-reset">🔄</button></div><div class="input-row"><input type="number" id="pomo-work" value="${Store.state.pomo.work}" min="1"><span>praca</span><input type="number" id="pomo-break" value="${Store.state.pomo.break}" min="1"><span>przerwa</span></div>`;
-        updatePomoUI();
-        document.getElementById('pomo-start').onclick = togglePomo;
-        document.getElementById('pomo-reset').onclick = resetPomo;
-        ['pomo-work','pomo-break'].forEach(id2 => document.getElementById(id2).onchange = e => { Store.state.pomo[id2.replace('pomo-','')] = parseInt(e.target.value)||25; resetPomo(); });
-      } else if(id==='radio-win') {
-        body.innerHTML = `<input type="text" id="radio-url" placeholder="URL mp3/aac" value="${Store.state.radioUrl}" style="width:100%"><div style="margin-top:8px;display:flex;gap:8px;"><button class="btn" id="radio-play">▶ Graj</button><input type="range" id="radio-vol" min="0" max="1" step="0.1" value="0.5" style="flex:1"></div>`;
-        const audio = new Audio(); audio.crossOrigin = 'anonymous';
-        document.getElementById('radio-play').onclick = () => { audio.src = document.getElementById('radio-url').value; audio.paused ? audio.play().catch(()=>alert('❌ CORS/HTTPS error')) : audio.pause(); document.getElementById('radio-play').textContent = audio.paused ? '▶ Graj' : '⏸ Pauza'; Store.state.radioUrl = document.getElementById('radio-url').value; Store.save(); };
-        document.getElementById('radio-vol').oninput = e => audio.volume = e.target.value;
-      } else if(id==='notes-win') {
-        body.innerHTML = `<textarea id="notes-txt" placeholder="Myśli, linki, definicje...">${Store.state.notes}</textarea>`;
-        document.getElementById('notes-txt').oninput = e => { Store.state.notes = e.target.value; Store.save(); };
-      } else if(id==='check-win') {
-        body.innerHTML = `<div class="input-row"><input type="text" id="check-inp" placeholder="Zadanie"><button class="btn" id="check-add">+</button></div><div id="check-list"></div>`;
-        renderChecks();
-        document.getElementById('check-add').onclick = () => { const t=document.getElementById('check-inp').value.trim(); if(!t)return; Store.state.checklist.push({id:Date.now(),text:t,done:false}); document.getElementById('check-inp').value=''; Store.save(); renderChecks(); };
-      }
-    }
-    function renderChecks() {
-      const list = document.getElementById('check-list'); list.innerHTML='';
-      Store.state.checklist.forEach(c => { list.innerHTML += `<div class="check-item ${c.done?'done':''}"><input type="checkbox" ${c.done?'checked':''} onchange="toggleCheck(${c.id})"><span>${c.text}</span><button class="btn outline" style="padding:2px 6px;margin-left:auto;" onclick="delCheck(${c.id})">✕</button></div>`; });
-    }
-    window.toggleCheck = id => { const c=Store.state.checklist.find(x=>x.id===id); if(c){c.done=!c.done; Store.save(); renderChecks();} };
-    window.delCheck = id => { Store.state.checklist=Store.state.checklist.filter(x=>x.id!==id); Store.save(); renderChecks(); };
+<!-- POMODORO WINDOW -->
+<div class="float-win" id="win-pomodoro" data-win-id="pomodoro">
+  <div class="win-header">
+    <span>⏱ Pomodoro</span>
+    <button class="win-close" data-win="pomodoro">✕</button>
+  </div>
+  <div class="win-body">
+    <div class="pomo-display">
+      <div class="pomo-time" id="pomo-time">25:00</div>
+      <div class="pomo-phase" id="pomo-phase">Czas pracy</div>
+      <div class="pomo-cycle" id="pomo-cycle">Cykl 1</div>
+    </div>
+    <div class="pomo-controls">
+      <button class="pomo-btn" id="pomo-start">▶ Start</button>
+      <button class="pomo-btn" id="pomo-pause">⏸ Pauza</button>
+      <button class="pomo-btn" id="pomo-reset">↺ Reset</button>
+    </div>
+    <div class="pomo-settings">
+      <div class="pomo-input-group">
+        <label>Praca (min)</label>
+        <input type="number" id="pomo-work-min" value="25" min="1" max="90">
+      </div>
+      <div class="pomo-input-group">
+        <label>Przerwa (min)</label>
+        <input type="number" id="pomo-break-min" value="5" min="1" max="30">
+      </div>
+    </div>
+  </div>
+</div>
 
-    // Drawer Toggle
-    const drawer = document.getElementById('tools-drawer');
-    document.getElementById('dock-tools').onclick = () => drawer.classList.toggle('open');
-    document.querySelectorAll('.tool-toggle').forEach(btn => btn.onclick = () => toggleWindow(btn.dataset.win));
-    // Restore open windows on load
-    Store.state.windowsOpen.forEach(id => createWindow(id));
+<!-- RADIO WINDOW -->
+<div class="float-win" id="win-radio" data-win-id="radio">
+  <div class="win-header">
+    <span>📻 Radio</span>
+    <button class="win-close" data-win="radio">✕</button>
+  </div>
+  <div class="win-body">
+    <div class="radio-url">
+      <input type="text" id="radio-url-input" placeholder="URL streamu (mp3/aac)...">
+      <button class="radio-play" id="radio-play-btn">▶</button>
+    </div>
+    <div class="radio-status" id="radio-status">Wstrzymane</div>
+    <div class="radio-vol">
+      <span>🔈</span>
+      <input type="range" id="radio-vol" min="0" max="1" step="0.01" value="0.7">
+      <span>🔊</span>
+    </div>
+  </div>
+</div>
 
-    // === 3. POMODORO LOGIC ===
-    let pomoInterval;
-    function updatePomoUI() {
-      if(!document.getElementById('pomo-time')) return;
-      const m = Math.floor(Store.state.pomo.time/60).toString().padStart(2,'0');
-      const s = (Store.state.pomo.time%60).toString().padStart(2,'0');
-      document.getElementById('pomo-time').textContent = `${m}:${s}`;
-      document.getElementById('pomo-mode').textContent = Store.state.pomo.mode==='work' ? '🔴 Praca' : '🟢 Przerwa';
-      document.getElementById('pomo-start').textContent = Store.state.pomo.running ? '⏸ Pauza' : '▶ Start';
-    }
-    function togglePomo() {
-      Store.state.pomo.running = !Store.state.pomo.running;
-      if(Store.state.pomo.running) { Store.state.pomo.lastTick = Date.now(); pomoInterval = setInterval(tickPomo, 1000); }
-      else clearInterval(pomoInterval);
-      updatePomoUI(); Store.save();
-    }
-    function tickPomo() {
-      const delta = Math.floor((Date.now()-Store.state.pomo.lastTick)/1000);
-      if(delta>=1) { Store.state.pomo.time -= delta; Store.state.pomo.lastTick = Date.now(); }
-      if(Store.state.pomo.time<=0) switchPomoMode();
-      updatePomoUI(); Store.save();
-    }
-    function resetPomo() { clearInterval(pomoInterval); Store.state.pomo.running=false; Store.state.pomo.time = Store.state.pomo.mode==='work' ? Store.state.pomo.work*60 : Store.state.pomo.break*60; updatePomoUI(); Store.save(); }
-    function switchPomoMode() {
-      clearInterval(pomoInterval); Store.state.pomo.running=false;
-      if(Store.state.pomo.mode==='work') { Store.state.pomo.mode='break'; alert('💡 Czas na przerwę!'); }
-      else { Store.state.pomo.mode='work'; alert('🎯 Czas wracać do pracy!'); }
-      resetPomo();
-    }
+<!-- NOTEPAD WINDOW -->
+<div class="float-win" id="win-notepad" data-win-id="notepad">
+  <div class="win-header">
+    <span>📝 Notatnik</span>
+    <button class="win-close" data-win="notepad">✕</button>
+  </div>
+  <div class="win-body">
+    <textarea id="notepad-area" placeholder="Pisz tutaj..."></textarea>
+  </div>
+</div>
 
-    // === 4. MINDMAP ENGINE (Zoom, Pan, Drag-Drop Link, Hover Menu) ===
-    const viewport = document.getElementById('mm-viewport');
-    const world = document.getElementById('mm-world');
-    const svg = document.getElementById('mm-svg');
-    let vp = { x: Store.state.mm.panX, y: Store.state.mm.panY, scale: Store.state.mm.zoom || 1 };
-    let nodes = Store.state.mm.nodes, links = Store.state.mm.links;
-    let flashMode = false, selectedNode = null, dragNode = null, dragOff = {x:0,y:0};
-    let hoverMenu = document.getElementById('node-hover-menu');
-    let menuHideTimer = null;
+<!-- CHECKLIST WINDOW -->
+<div class="float-win" id="win-checklist" data-win-id="checklist">
+  <div class="win-header">
+    <span>✅ Checklista</span>
+    <button class="win-close" data-win="checklist">✕</button>
+  </div>
+  <div class="win-body">
+    <div class="check-add">
+      <input type="text" id="check-input" placeholder="Nowe zadanie...">
+      <button id="check-add-btn">+</button>
+    </div>
+    <div class="check-list" id="check-list"></div>
+  </div>
+</div>
 
-    function updateTransform() {
-      world.style.transform = `translate(${vp.x}px, ${vp.y}px) scale(${vp.scale})`;
-      Store.state.mm.panX = vp.x; Store.state.mm.panY = vp.y; Store.state.mm.zoom = vp.scale;
-    }
-    updateTransform();
+<!-- NODE HOVER MENU -->
+<div id="node-hover-menu">
+  <div class="color-grid" id="node-color-grid"></div>
+  <button class="menu-btn" id="node-unlink-btn">🗑️ Usuń wszystkie połączenia</button>
+</div>
 
-    // Zoom
-    viewport.onwheel = e => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      vp.scale = Math.min(2.5, Math.max(0.2, vp.scale + delta));
-      updateTransform(); Store.save();
-    };
+<script>
+// ═══════════════════════════════════════════════════
+// STATE & STORAGE
+// ═══════════════════════════════════════════════════
+const STORE_KEY = 'studyos_v2';
+let saveTimer = null;
 
-    // Pan (Background Drag)
-    let isPanning = false, panStart = {x:0,y:0};
-    viewport.onmousedown = e => {
-      if(e.target.closest('.node')) return;
-      isPanning = true; panStart = {x: e.clientX - vp.x, y: e.clientY - vp.y};
-      viewport.classList.add('panning');
-    };
-    window.onmousemove = e => {
-      if(isPanning) { vp.x = e.clientX - panStart.x; vp.y = e.clientY - panStart.y; updateTransform(); Store.save(); }
-      if(dragNode) {
-        const wx = (e.clientX - vp.x) / vp.scale - dragOff.x;
-        const wy = (e.clientY - vp.y) / vp.scale - dragOff.y;
-        dragNode.el.style.left = wx + 'px'; dragNode.el.style.top = wy + 'px';
-        dragNode.data.x = wx; dragNode.data.y = wy;
-        drawLines();
-      }
-    };
-    window.onmouseup = e => {
-      isPanning = false; viewport.classList.remove('panning');
-      if(dragNode) {
-        // Check drop on another node
-        const wx = (e.clientX - vp.x) / vp.scale;
-        const wy = (e.clientY - vp.y) / vp.scale;
-        const target = nodes.find(n => n.id !== dragNode.data.id && Math.hypot(n.x - wx, n.y - wy) < 60);
-        if(target && !links.find(l => (l.from===dragNode.data.id && l.to===target.id) || (l.from===target.id && l.to===dragNode.data.id))) {
-          links.push({from: dragNode.data.id, to: target.id}); Store.save(); renderNodes(); drawLines();
-        }
-        dragNode = null; Store.save();
-      }
-    };
+const defaultState = () => ({
+  view: 'mindmap',
+  nodes: [{ id: 'n1', x: 1950, y: 1950, text: 'Moja Mapa', color: '#1e1b4b' }],
+  links: [],
+  zoom: 1, pan: { x: 0, y: 0 },
+  windows: {
+    pomodoro: { visible: false, x: 40, y: 120 },
+    radio: { visible: false, x: 320, y: 120 },
+    notepad: { visible: false, x: 40, y: 400 },
+    checklist: { visible: false, x: 360, y: 400 }
+  },
+  notes: '',
+  checklist: [],
+  pomodoro: { workMin: 25, breakMin: 5 },
+  radioUrl: '',
+  settings: {
+    primary: '#7c3aed',
+    secondary: '#06b6d4',
+    font: "'Space Grotesk', sans-serif",
+    blobSpeed: 1
+  }
+});
 
-    function renderNodes() {
-      world.querySelectorAll('.node').forEach(n => n.remove());
-      nodes.forEach(n => {
-        const el = document.createElement('div');
-        el.className = 'node'; el.dataset.id = n.id;
-        el.style.left = n.x + 'px'; el.style.top = n.y + 'px';
-        if(n.color) el.style.background = n.color;
-        if(flashMode && n.id !== nodes[0]?.id) el.classList.add('flashcard-blur');
-        el.textContent = n.text;
-        world.appendChild(el);
+let state;
+try {
+  const saved = localStorage.getItem(STORE_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    state = { ...defaultState(), ...parsed };
+    state.settings = { ...defaultState().settings, ...(parsed.settings || {}) };
+    state.windows = { ...defaultState().windows, ...(parsed.windows || {}) };
+    state.pomodoro = { ...defaultState().pomodoro, ...(parsed.pomodoro || {}) };
+  } else {
+    state = defaultState();
+  }
+} catch(e) { state = defaultState(); }
 
-        el.onmousedown = e => {
-          e.stopPropagation();
-          if(flashMode) { el.classList.remove('flashcard-blur'); return; }
-          selectedNode = n;
-          dragNode = { el, data: n, off: {x: (e.clientX - vp.x)/vp.scale - n.x, y: (e.clientY - vp.y)/vp.scale - n.y} };
-          dragNode.el.classList.add('selected');
-        };
-        el.ondblclick = () => { const t = prompt('Edytuj:', n.text); if(t!==null) { n.text=t; Store.save(); renderNodes(); }};
-        el.onmouseenter = () => showHoverMenu(n, el);
-        el.onmouseleave = () => setTimeout(()=>{ if(!hoverMenu.matches(':hover')) hideHoverMenu(); }, 200);
-      });
-    }
+function schedSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e) {}
+  }, 250);
+}
 
-    function drawLines() {
-      svg.innerHTML = '';
-      links.forEach(l => {
-        const a = nodes.find(n=>n.id===l.from), b = nodes.find(n=>n.id===l.to);
-        if(!a||!b) return;
-        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-        line.setAttribute('x1', a.x+50); line.setAttribute('y1', a.y+16);
-        line.setAttribute('x2', b.x+50); line.setAttribute('y2', b.y+16);
-        svg.appendChild(line);
-      });
-    }
+// ═══════════════════════════════════════════════════
+// CANVAS BACKGROUND - BLOBS
+// ═══════════════════════════════════════════════════
+const bgCanvas = document.getElementById('bg-canvas');
+const bgCtx = bgCanvas.getContext('2d');
+let blobs = [];
 
-    // Hover Menu
-    const paletteColors = ['#0b1120','#1e293b','#334155','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#6366f1','#a855f7','#ec4899'];
-    document.getElementById('palette-grid').innerHTML = paletteColors.map(c => `<div class="color-dot" style="background:${c}"></div>`).join('');
-    document.querySelectorAll('#palette-grid .color-dot').forEach(dot => dot.onclick = () => { selectedNode.color = dot.style.backgroundColor; Store.save(); renderNodes(); hideHoverMenu(); });
-    document.getElementById('del-links-btn').onclick = () => { if(!selectedNode) return; links = links.filter(l => l.from !== selectedNode.id && l.to !== selectedNode.id); Store.save(); renderNodes(); drawLines(); hideHoverMenu(); };
+function initBlobs() {
+  const W = window.innerWidth, H = window.innerHeight;
+  bgCanvas.width = W; bgCanvas.height = H;
+  blobs = Array.from({ length: 10 }, (_, i) => ({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.5,
+    vy: (Math.random() - 0.5) * 0.5,
+    r: 180 + Math.random() * 200,
+    hue: [260, 200, 170, 30, 320][i % 5],
+    alpha: 0.06 + Math.random() * 0.06
+  }));
+}
 
-    function showHoverMenu(node, el) {
-      selectedNode = node;
-      const rect = el.getBoundingClientRect();
-      hoverMenu.style.left = (rect.left + window.scrollX) + 'px';
-      hoverMenu.style.top = (rect.bottom + window.scrollY + 8) + 'px';
-      hoverMenu.classList.add('visible');
-    }
-    function hideHoverMenu() { hoverMenu.classList.remove('visible'); }
-    hoverMenu.onmouseleave = hideHoverMenu;
+function animateBlobs() {
+  const W = bgCanvas.width, H = bgCanvas.height;
+  const spd = parseFloat(state.settings.blobSpeed) || 1;
+  bgCtx.clearRect(0, 0, W, H);
+  bgCtx.fillStyle = '#0a0a0f';
+  bgCtx.fillRect(0, 0, W, H);
 
-    document.getElementById('mm-add').onclick = () => {
-      const id = Date.now();
-      nodes.push({id, x: (-vp.x + innerWidth/2 - vp.x*0.5)/vp.scale + (Math.random()*100-50), y: (-vp.y + innerHeight/2 - vp.y*0.5)/vp.scale + (Math.random()*100-50), text:'Nowy', color:''});
-      Store.save(); renderNodes(); drawLines();
-    };
-    document.getElementById('mm-flashcard').onclick = () => { flashMode=!flashMode; document.getElementById('mm-flashcard').classList.toggle('active',flashMode); renderNodes(); };
+  for (const b of blobs) {
+    b.x += b.vx * spd;
+    b.y += b.vy * spd;
+    if (b.x < -b.r) b.x = W + b.r;
+    if (b.x > W + b.r) b.x = -b.r;
+    if (b.y < -b.r) b.y = H + b.r;
+    if (b.y > H + b.r) b.y = -b.r;
 
-    // Export/Import
-    document.getElementById('mm-exp-json').onclick = () => { const b=new Blob([JSON.stringify({nodes,links},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='mapa.json'; a.click(); };
-    document.getElementById('mm-imp-json').onclick = () => { const i=document.createElement('input'); i.type='file'; i.accept='.json'; i.onchange=e=>{ const f=e.target.files[0]; const r=new FileReader(); r.onload=()=>{ const d=JSON.parse(r.result); nodes=d.nodes||[]; links=d.links||[]; Store.save(); renderNodes(); drawLines(); }; r.readAsText(f); }; i.click(); };
-    document.getElementById('mm-exp-png').onclick = async () => {
-      const orig = {x:vp.x, y:vp.y, s:vp.scale};
-      vp.x=0; vp.y=0; vp.scale=1; updateTransform();
-      setTimeout(async () => {
-        const c = await html2canvas(viewport, {backgroundColor:'#0b1120', scale:2});
-        const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='mapa.png'; a.click();
-        vp=orig; updateTransform();
-      }, 300);
-    };
+    const g = bgCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+    g.addColorStop(0, `hsla(${b.hue}, 70%, 55%, ${b.alpha})`);
+    g.addColorStop(1, `hsla(${b.hue}, 70%, 55%, 0)`);
+    bgCtx.beginPath();
+    bgCtx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    bgCtx.fillStyle = g;
+    bgCtx.fill();
+  }
+  requestAnimationFrame(animateBlobs);
+}
 
-    // === 5. SETTINGS & ROUTER ===
-    const applyTheme = () => {
-      const p=document.getElementById('set-primary').value, s=document.getElementById('set-secondary').value;
-      const fm=document.getElementById('set-font-main').value, sp=parseFloat(document.getElementById('set-vis-speed').value);
-      document.documentElement.style.setProperty('--primary',p); document.documentElement.style.setProperty('--secondary',s);
-      document.documentElement.style.setProperty('--font-main',fm); speed=sp;
-      Store.state.settings = {primary:p, secondary:s, fontMain:fm, speed:sp}; Store.save();
-    };
-    ['set-primary','set-secondary','set-font-main','set-vis-speed'].forEach(id => document.getElementById(id).oninput = applyTheme);
-    document.getElementById('set-reset').onclick = () => { if(confirm('Usunąć wszystkie dane?')) { localStorage.removeItem(Store.key); location.reload(); }};
+window.addEventListener('resize', () => { initBlobs(); });
+initBlobs();
+animateBlobs();
 
-    const dockBtns = document.querySelectorAll('.dock-btn[data-view]');
-    const views = document.querySelectorAll('.view');
-    window.addEventListener('hashchange', () => {
-      const h = location.hash.slice(1)||'mindmap';
-      dockBtns.forEach(b=>b.classList.toggle('active', b.dataset.view===h));
-      views.forEach(v=>v.classList.toggle('active', v.id===`view-${h}`));
+// ═══════════════════════════════════════════════════
+// ROUTING / VIEWS
+// ═══════════════════════════════════════════════════
+const views = { mindmap: document.getElementById('view-mindmap'), settings: document.getElementById('view-settings') };
+const dockBtns = { mindmap: document.getElementById('dock-mindmap'), settings: document.getElementById('dock-settings') };
+
+function switchView(name) {
+  if (!views[name]) return;
+  state.view = name;
+  schedSave();
+
+  Object.entries(views).forEach(([k, el]) => {
+    el.classList.remove('active', 'visible');
+    if (dockBtns[k]) dockBtns[k].classList.remove('active');
+  });
+
+  views[name].classList.add('active');
+  if (dockBtns[name]) dockBtns[name].classList.add('active');
+  requestAnimationFrame(() => views[name].classList.add('visible'));
+
+  if (name === 'mindmap') requestAnimationFrame(renderMindmap);
+  location.hash = name;
+}
+
+document.getElementById('dock-mindmap').addEventListener('click', () => switchView('mindmap'));
+document.getElementById('dock-settings').addEventListener('click', () => switchView('settings'));
+
+window.addEventListener('hashchange', () => {
+  const h = location.hash.replace('#', '');
+  if (views[h]) switchView(h);
+});
+
+// ═══════════════════════════════════════════════════
+// TOOLS DRAWER
+// ═══════════════════════════════════════════════════
+const toolsDrawer = document.getElementById('tools-drawer');
+const dockTools = document.getElementById('dock-tools');
+
+dockTools.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = toolsDrawer.classList.toggle('open');
+  dockTools.classList.toggle('active', open);
+});
+
+document.addEventListener('click', (e) => {
+  if (!toolsDrawer.contains(e.target) && e.target !== dockTools) {
+    toolsDrawer.classList.remove('open');
+    dockTools.classList.remove('active');
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// FLOATING WINDOWS
+// ═══════════════════════════════════════════════════
+let topZ = 400;
+
+function getWin(id) { return document.getElementById('win-' + id); }
+
+function applyWinState(id) {
+  const ws = state.windows[id];
+  const el = getWin(id);
+  if (!el) return;
+  if (ws.visible) {
+    el.classList.add('visible');
+    el.style.left = (ws.x || 40) + 'px';
+    el.style.top = (ws.y || 120) + 'px';
+  } else {
+    el.classList.remove('visible');
+  }
+}
+
+function toggleWin(id) {
+  if (!state.windows[id]) return;
+  state.windows[id].visible = !state.windows[id].visible;
+  applyWinState(id);
+  document.querySelectorAll('.tool-btn[data-win="' + id + '"]').forEach(b => b.classList.toggle('active', state.windows[id].visible));
+  schedSave();
+}
+
+// Init windows from state
+Object.keys(state.windows).forEach(id => {
+  applyWinState(id);
+  document.querySelectorAll('.tool-btn[data-win="' + id + '"]').forEach(b => b.classList.toggle('active', state.windows[id].visible));
+});
+
+// Tool buttons
+document.querySelectorAll('.tool-btn[data-win]').forEach(btn => {
+  btn.addEventListener('click', () => toggleWin(btn.dataset.win));
+});
+
+// Close buttons
+document.querySelectorAll('.win-close[data-win]').forEach(btn => {
+  btn.addEventListener('click', () => toggleWin(btn.dataset.win));
+});
+
+// Bring to front
+document.querySelectorAll('.float-win').forEach(win => {
+  win.addEventListener('mousedown', () => { win.style.zIndex = ++topZ; });
+});
+
+// Drag windows
+document.querySelectorAll('.win-header').forEach(header => {
+  const win = header.closest('.float-win');
+  let dragging = false, ox = 0, oy = 0;
+  header.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('win-close')) return;
+    dragging = true;
+    ox = e.clientX - win.offsetLeft;
+    oy = e.clientY - win.offsetTop;
+    win.style.zIndex = ++topZ;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const nx = Math.max(0, Math.min(window.innerWidth - 50, e.clientX - ox));
+    const ny = Math.max(0, Math.min(window.innerHeight - 50, e.clientY - oy));
+    win.style.left = nx + 'px';
+    win.style.top = ny + 'px';
+    const id = win.dataset.winId;
+    if (state.windows[id]) { state.windows[id].x = nx; state.windows[id].y = ny; }
+    schedSave();
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+});
+
+// ═══════════════════════════════════════════════════
+// POMODORO
+// ═══════════════════════════════════════════════════
+let pomoState = {
+  running: false, isBreak: false, cycle: 1,
+  endTime: null, remaining: null
+};
+let pomoInterval = null;
+
+const pomoTimeEl = document.getElementById('pomo-time');
+const pomoPhaseEl = document.getElementById('pomo-phase');
+const pomoCycleEl = document.getElementById('pomo-cycle');
+const pomoWorkIn = document.getElementById('pomo-work-min');
+const pomoBreakIn = document.getElementById('pomo-break-min');
+
+pomoWorkIn.value = state.pomodoro.workMin;
+pomoBreakIn.value = state.pomodoro.breakMin;
+
+function formatTime(secs) {
+  const m = Math.floor(secs / 60).toString().padStart(2, '0');
+  const s = (secs % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function pomoReset() {
+  clearInterval(pomoInterval);
+  pomoInterval = null;
+  pomoState.running = false;
+  pomoState.isBreak = false;
+  pomoState.cycle = 1;
+  pomoState.endTime = null;
+  const secs = (parseInt(pomoWorkIn.value) || 25) * 60;
+  pomoState.remaining = secs;
+  pomoTimeEl.textContent = formatTime(secs);
+  pomoPhaseEl.textContent = 'Czas pracy';
+  pomoCycleEl.textContent = 'Cykl 1';
+}
+
+function pomoTick() {
+  const now = Date.now();
+  const rem = Math.max(0, Math.round((pomoState.endTime - now) / 1000));
+  pomoState.remaining = rem;
+  pomoTimeEl.textContent = formatTime(rem);
+  if (rem <= 0) {
+    clearInterval(pomoInterval);
+    pomoInterval = null;
+    pomoState.running = false;
+    pomoState.isBreak = !pomoState.isBreak;
+    if (!pomoState.isBreak) pomoState.cycle++;
+    const dur = pomoState.isBreak ? (parseInt(pomoBreakIn.value) || 5) : (parseInt(pomoWorkIn.value) || 25);
+    const label = pomoState.isBreak ? '☕ Przerwa' : '💪 Czas pracy';
+    pomoPhaseEl.textContent = label;
+    pomoCycleEl.textContent = `Cykl ${pomoState.cycle}`;
+    pomoState.remaining = dur * 60;
+    pomoTimeEl.textContent = formatTime(pomoState.remaining);
+    try { new Notification('Pomodoro', { body: `${label} – ${dur} minut` }); } catch(e) {}
+    alert(`${label}! Czas: ${dur} min`);
+    pomoStart();
+  }
+}
+
+function pomoStart() {
+  if (pomoState.running) return;
+  pomoState.running = true;
+  const rem = pomoState.remaining || (parseInt(pomoWorkIn.value) || 25) * 60;
+  pomoState.endTime = Date.now() + rem * 1000;
+  pomoInterval = setInterval(pomoTick, 500);
+  pomoPhaseEl.textContent = pomoState.isBreak ? '☕ Przerwa' : '💪 Czas pracy';
+}
+
+function pomoPause() {
+  if (!pomoState.running) return;
+  clearInterval(pomoInterval); pomoInterval = null;
+  pomoState.running = false;
+  pomoState.remaining = Math.max(0, Math.round((pomoState.endTime - Date.now()) / 1000));
+}
+
+document.getElementById('pomo-start').addEventListener('click', pomoStart);
+document.getElementById('pomo-pause').addEventListener('click', pomoPause);
+document.getElementById('pomo-reset').addEventListener('click', pomoReset);
+
+[pomoWorkIn, pomoBreakIn].forEach(inp => {
+  inp.addEventListener('change', () => {
+    state.pomodoro.workMin = parseInt(pomoWorkIn.value) || 25;
+    state.pomodoro.breakMin = parseInt(pomoBreakIn.value) || 5;
+    if (!pomoState.running) pomoReset();
+    schedSave();
+  });
+});
+
+pomoReset();
+
+// ═══════════════════════════════════════════════════
+// RADIO
+// ═══════════════════════════════════════════════════
+let radioAudio = new Audio();
+radioAudio.crossOrigin = 'anonymous';
+let radioPlaying = false;
+
+const radioUrlInput = document.getElementById('radio-url-input');
+const radioPlayBtn = document.getElementById('radio-play-btn');
+const radioStatus = document.getElementById('radio-status');
+const radioVol = document.getElementById('radio-vol');
+
+radioUrlInput.value = state.radioUrl || '';
+radioVol.value = 0.7;
+radioAudio.volume = 0.7;
+
+radioUrlInput.addEventListener('input', () => {
+  state.radioUrl = radioUrlInput.value.trim();
+  schedSave();
+});
+
+radioPlayBtn.addEventListener('click', () => {
+  if (!radioPlaying) {
+    const url = radioUrlInput.value.trim();
+    if (!url) { radioStatus.textContent = 'Podaj URL streamu!'; return; }
+    radioAudio.src = url;
+    radioAudio.load();
+    radioStatus.textContent = 'Ładowanie...';
+    radioAudio.play().then(() => {
+      radioPlaying = true;
+      radioPlayBtn.textContent = '⏸';
+      radioStatus.textContent = '▶ Gra';
+    }).catch(e => {
+      radioStatus.textContent = 'Błąd CORS / URL';
+      radioPlaying = false;
     });
-    dockBtns.forEach(b=>b.addEventListener('click', ()=>location.hash=b.dataset.view));
-    if(!location.hash) location.hash = 'mindmap';
+  } else {
+    radioAudio.pause();
+    radioPlaying = false;
+    radioPlayBtn.textContent = '▶';
+    radioStatus.textContent = 'Wstrzymane';
+  }
+});
 
-    // === 6. BG CANVAS ===
-    const cvs = document.getElementById('bg-canvas'), ctx = cvs.getContext('2d');
-    let speed = Store.state.settings.speed || 0.8;
-    let blobs = Array(10).fill().map(()=>({x:Math.random()*innerWidth, y:Math.random()*innerHeight, r:60+Math.random()*120, vx:(Math.random()-0.5)*0.8, vy:(Math.random()-0.5)*0.8, hue:Math.random()*360}));
-    function drawBg() {
-      ctx.fillStyle = 'rgba(11,17,32,0.12)'; ctx.fillRect(0,0,innerWidth,innerHeight);
-      blobs.forEach(b => {
-        b.x += b.vx*speed; b.y += b.vy*speed; b.hue += 0.3;
-        if(b.x<-b.r||b.x>innerWidth+b.r) b.vx*=-1; if(b.y<-b.r||b.y>innerHeight+b.r) b.vy*=-1;
-        const g = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
-        g.addColorStop(0, `hsla(${b.hue}, 65%, 55%, 0.25)`); g.addColorStop(1, 'transparent');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+radioVol.addEventListener('input', () => { radioAudio.volume = parseFloat(radioVol.value); });
+
+// ═══════════════════════════════════════════════════
+// NOTEPAD
+// ═══════════════════════════════════════════════════
+const notepadArea = document.getElementById('notepad-area');
+notepadArea.value = state.notes || '';
+notepadArea.addEventListener('input', () => { state.notes = notepadArea.value; schedSave(); });
+
+// ═══════════════════════════════════════════════════
+// CHECKLIST
+// ═══════════════════════════════════════════════════
+const checkList = document.getElementById('check-list');
+const checkInput = document.getElementById('check-input');
+
+function renderChecklist() {
+  checkList.innerHTML = '';
+  (state.checklist || []).forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'check-item' + (item.done ? ' done' : '');
+    div.innerHTML = `
+      <input type="checkbox" ${item.done ? 'checked' : ''}>
+      <span>${escHtml(item.text)}</span>
+      <button class="del-btn">✕</button>
+    `;
+    div.querySelector('input').addEventListener('change', (e) => {
+      state.checklist[i].done = e.target.checked;
+      div.classList.toggle('done', e.target.checked);
+      schedSave();
+    });
+    div.querySelector('.del-btn').addEventListener('click', () => {
+      state.checklist.splice(i, 1);
+      renderChecklist(); schedSave();
+    });
+    checkList.appendChild(div);
+  });
+}
+
+function addCheckItem() {
+  const t = checkInput.value.trim();
+  if (!t) return;
+  state.checklist.push({ text: t, done: false });
+  checkInput.value = '';
+  renderChecklist(); schedSave();
+}
+
+document.getElementById('check-add-btn').addEventListener('click', addCheckItem);
+checkInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addCheckItem(); });
+renderChecklist();
+
+// ═══════════════════════════════════════════════════
+// MINDMAP ENGINE
+// ═══════════════════════════════════════════════════
+const viewport = document.getElementById('mm-viewport');
+const world = document.getElementById('mm-world');
+const svgLinks = document.getElementById('mm-links');
+
+let mmZoom = state.zoom || 1;
+let mmPan = { ...((state.pan) || { x: 0, y: 0 }) };
+let flashcardMode = false;
+let nodeIdCounter = Date.now();
+
+function applyTransform() {
+  world.style.transform = `translate(${mmPan.x}px, ${mmPan.y}px) scale(${mmZoom})`;
+}
+
+function saveMapState() {
+  state.zoom = mmZoom;
+  state.pan = { ...mmPan };
+  schedSave();
+}
+
+// Centering on first load
+function centerMap() {
+  if (state.nodes.length > 0) {
+    const n = state.nodes[0];
+    mmPan.x = window.innerWidth / 2 - n.x * mmZoom;
+    mmPan.y = window.innerHeight / 2 - n.y * mmZoom;
+  }
+  applyTransform();
+}
+
+// ZOOM
+viewport.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect = viewport.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  const newZoom = Math.min(2.5, Math.max(0.2, mmZoom * delta));
+  mmPan.x = mx - (mx - mmPan.x) * (newZoom / mmZoom);
+  mmPan.y = my - (my - mmPan.y) * (newZoom / mmZoom);
+  mmZoom = newZoom;
+  applyTransform(); saveMapState();
+}, { passive: false });
+
+// PAN
+let isPanning = false, panStart = { x: 0, y: 0 }, panOrigin = { x: 0, y: 0 };
+
+viewport.addEventListener('mousedown', (e) => {
+  if (e.target !== viewport && e.target !== world && e.target !== svgLinks) return;
+  isPanning = true;
+  panStart = { x: e.clientX, y: e.clientY };
+  panOrigin = { ...mmPan };
+  viewport.classList.add('grabbing');
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  mmPan.x = panOrigin.x + (e.clientX - panStart.x);
+  mmPan.y = panOrigin.y + (e.clientY - panStart.y);
+  applyTransform();
+});
+
+document.addEventListener('mouseup', () => {
+  if (isPanning) { isPanning = false; viewport.classList.remove('grabbing'); saveMapState(); }
+});
+
+// RENDER LINKS
+function renderLinks() {
+  svgLinks.innerHTML = '';
+  (state.links || []).forEach(l => {
+    const a = state.nodes.find(n => n.id === l.from);
+    const b = state.nodes.find(n => n.id === l.to);
+    if (!a || !b) return;
+    const ax = a.x + 60, ay = a.y + 20;
+    const bx = b.x + 60, by = b.y + 20;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', ax); line.setAttribute('y1', ay);
+    line.setAttribute('x2', bx); line.setAttribute('y2', by);
+    svgLinks.appendChild(line);
+  });
+}
+
+// RENDER NODES
+function renderMindmap() {
+  // Remove existing node divs
+  world.querySelectorAll('.mm-node').forEach(n => n.remove());
+  renderLinks();
+
+  state.nodes.forEach((node, idx) => {
+    const el = document.createElement('div');
+    el.className = 'mm-node';
+    el.dataset.id = node.id;
+    el.textContent = node.text;
+    el.style.left = node.x + 'px';
+    el.style.top = node.y + 'px';
+    if (node.color) el.style.background = node.color;
+    if (flashcardMode && idx > 0) el.classList.add('flashcard-blur');
+
+    makeNodeDraggable(el, node);
+    makeNodeConnectable(el, node);
+
+    el.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      const t = prompt('Edytuj węzeł:', node.text);
+      if (t !== null) { node.text = t; el.textContent = t; schedSave(); }
+    });
+
+    // Hover menu
+    let hoverTimeout = null;
+    el.addEventListener('mouseenter', (e) => {
+      clearTimeout(hoverTimeout);
+      showNodeMenu(e, node, el);
+    });
+    el.addEventListener('mouseleave', () => {
+      hoverTimeout = setTimeout(() => hideNodeMenu(), 200);
+    });
+
+    if (flashcardMode && idx > 0) {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.classList.remove('flashcard-blur');
       });
-      requestAnimationFrame(drawBg);
     }
-    window.addEventListener('resize', ()=>{cvs.width=innerWidth; cvs.height=innerHeight;});
-    cvs.width=innerWidth; cvs.height=innerHeight; drawBg();
 
-    if(Store.state.settings) {
-      document.getElementById('set-primary').value = Store.state.settings.primary;
-      document.getElementById('set-secondary').value = Store.state.settings.secondary;
-      document.getElementById('set-font-main').value = Store.state.settings.fontMain;
-      document.getElementById('set-vis-speed').value = Store.state.settings.speed;
-      applyTheme();
+    world.appendChild(el);
+  });
+}
+
+// ── NODE DRAGGING ──
+function makeNodeDraggable(el, node) {
+  let dragging = false, ox = 0, oy = 0;
+  let lastDropTarget = null;
+
+  el.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    dragging = true;
+    ox = (e.clientX - mmPan.x) / mmZoom - node.x;
+    oy = (e.clientY - mmPan.y) / mmZoom - node.y;
+    el.style.zIndex = 30;
+    hideNodeMenu();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const nx = (e.clientX - mmPan.x) / mmZoom - ox;
+    const ny = (e.clientY - mmPan.y) / mmZoom - oy;
+    node.x = nx; node.y = ny;
+    el.style.left = nx + 'px';
+    el.style.top = ny + 'px';
+    renderLinks();
+
+    // Highlight potential link target
+    const mx = (e.clientX - mmPan.x) / mmZoom;
+    const my = (e.clientY - mmPan.y) / mmZoom;
+    if (lastDropTarget) { lastDropTarget.classList.remove('drag-over'); lastDropTarget = null; }
+    world.querySelectorAll('.mm-node').forEach(other => {
+      if (other === el) return;
+      const oNode = state.nodes.find(n => n.id === other.dataset.id);
+      if (!oNode) return;
+      const dx = mx - (oNode.x + 60), dy = my - (oNode.y + 20);
+      if (Math.sqrt(dx*dx + dy*dy) < 60) {
+        other.classList.add('drag-over');
+        lastDropTarget = other;
+      }
+    });
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    if (!dragging) return;
+    dragging = false;
+    el.style.zIndex = 10;
+    if (lastDropTarget) {
+      lastDropTarget.classList.remove('drag-over');
+      const targetId = lastDropTarget.dataset.id;
+      const alreadyLinked = state.links.some(l =>
+        (l.from === node.id && l.to === targetId) || (l.from === targetId && l.to === node.id)
+      );
+      if (!alreadyLinked && targetId !== node.id) {
+        state.links.push({ from: node.id, to: targetId });
+        renderLinks();
+      }
+      lastDropTarget = null;
     }
-    renderNodes(); drawLines();
-  </script>
+    schedSave();
+  });
+}
+
+function makeNodeConnectable(el, node) {}
+
+// ── NODE HOVER MENU ──
+const nodeHoverMenu = document.getElementById('node-hover-menu');
+const colorGrid = document.getElementById('node-color-grid');
+const unlinkBtn = document.getElementById('node-unlink-btn');
+const NODE_COLORS = ['#1e1b4b','#172554','#064e3b','#3b0764','#1c1917','#7c3aed','#1d4ed8','#0f766e','#be123c','#b45309','#374151'];
+
+colorGrid.innerHTML = NODE_COLORS.map(c => `<div class="color-swatch" style="background:${c}" data-color="${c}"></div>`).join('');
+
+let menuHideTimeout = null;
+let menuActiveNode = null, menuActiveEl = null;
+
+nodeHoverMenu.addEventListener('mouseenter', () => clearTimeout(menuHideTimeout));
+nodeHoverMenu.addEventListener('mouseleave', () => { menuHideTimeout = setTimeout(hideNodeMenu, 200); });
+
+colorGrid.querySelectorAll('.color-swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    if (!menuActiveNode) return;
+    menuActiveNode.color = sw.dataset.color;
+    if (menuActiveEl) menuActiveEl.style.background = sw.dataset.color;
+    schedSave(); hideNodeMenu();
+  });
+});
+
+unlinkBtn.addEventListener('click', () => {
+  if (!menuActiveNode) return;
+  state.links = state.links.filter(l => l.from !== menuActiveNode.id && l.to !== menuActiveNode.id);
+  renderLinks(); schedSave(); hideNodeMenu();
+});
+
+function showNodeMenu(e, node, el) {
+  menuActiveNode = node; menuActiveEl = el;
+  const rect = el.getBoundingClientRect();
+  nodeHoverMenu.style.left = rect.right + 8 + 'px';
+  nodeHoverMenu.style.top = rect.top + 'px';
+  // Boundary check
+  requestAnimationFrame(() => {
+    const mr = nodeHoverMenu.getBoundingClientRect();
+    if (mr.right > window.innerWidth - 10) nodeHoverMenu.style.left = (rect.left - mr.width - 8) + 'px';
+    if (mr.bottom > window.innerHeight - 10) nodeHoverMenu.style.top = (window.innerHeight - mr.height - 10) + 'px';
+  });
+  nodeHoverMenu.classList.add('visible');
+}
+
+function hideNodeMenu() {
+  nodeHoverMenu.classList.remove('visible');
+  menuActiveNode = null; menuActiveEl = null;
+}
+
+// ── ADD NODE ──
+document.getElementById('btn-add-node').addEventListener('click', () => {
+  const cx = (window.innerWidth / 2 - mmPan.x) / mmZoom;
+  const cy = (window.innerHeight / 2 - mmPan.y) / mmZoom;
+  const id = 'n' + (++nodeIdCounter);
+  state.nodes.push({
+    id, x: cx - 60 + (Math.random() - 0.5) * 100,
+    y: cy - 20 + (Math.random() - 0.5) * 100,
+    text: 'Nowy węzeł', color: '#1e1b4b'
+  });
+  renderMindmap(); schedSave();
+});
+
+// ── FLASHCARD MODE ──
+const btnFlashcard = document.getElementById('btn-flashcard');
+btnFlashcard.addEventListener('click', () => {
+  flashcardMode = !flashcardMode;
+  btnFlashcard.classList.toggle('active', flashcardMode);
+  renderMindmap();
+});
+
+// ── EXPORT JSON ──
+document.getElementById('btn-export-json').addEventListener('click', () => {
+  const data = JSON.stringify({ nodes: state.nodes, links: state.links }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mapa-mysli.json';
+  a.click();
+});
+
+// ── IMPORT JSON ──
+const importFileInput = document.getElementById('import-file-input');
+document.getElementById('btn-import-json').addEventListener('click', () => importFileInput.click());
+importFileInput.addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.nodes) state.nodes = data.nodes;
+      if (data.links) state.links = data.links;
+      renderMindmap(); schedSave();
+      showToast('Zaimportowano mapę!');
+    } catch(err) { showToast('Błąd importu pliku JSON'); }
+  };
+  reader.readAsText(f);
+  importFileInput.value = '';
+});
+
+// ── EXPORT PNG ──
+document.getElementById('btn-export-png').addEventListener('click', async () => {
+  const savedZoom = mmZoom, savedPan = { ...mmPan };
+  mmZoom = 1; mmPan = { x: 0, y: 0 };
+  applyTransform();
+  await new Promise(r => setTimeout(r, 300));
+  try {
+    const canvas = await html2canvas(world, {
+      backgroundColor: '#0a0a0f',
+      scale: 1,
+      useCORS: true,
+      allowTaint: true
+    });
+    const a = document.createElement('a');
+    a.download = 'mapa-mysli.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  } catch(e) { showToast('Błąd eksportu PNG'); }
+  mmZoom = savedZoom; mmPan = savedPan;
+  applyTransform();
+});
+
+// ═══════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════
+const root = document.documentElement;
+
+function applySettings() {
+  const s = state.settings;
+  root.style.setProperty('--primary', s.primary);
+  root.style.setProperty('--secondary', s.secondary);
+  root.style.setProperty('--font-main', s.font);
+  root.style.setProperty('--blob-speed', s.blobSpeed);
+  document.getElementById('set-primary').value = s.primary;
+  document.getElementById('set-secondary').value = s.secondary;
+  document.getElementById('set-font').value = s.font;
+  document.getElementById('set-blob-speed').value = s.blobSpeed;
+}
+
+document.getElementById('set-primary').addEventListener('input', (e) => {
+  state.settings.primary = e.target.value;
+  root.style.setProperty('--primary', e.target.value);
+  schedSave();
+});
+document.getElementById('set-secondary').addEventListener('input', (e) => {
+  state.settings.secondary = e.target.value;
+  root.style.setProperty('--secondary', e.target.value);
+  schedSave();
+});
+document.getElementById('set-font').addEventListener('change', (e) => {
+  state.settings.font = e.target.value;
+  root.style.setProperty('--font-main', e.target.value);
+  schedSave();
+});
+document.getElementById('set-blob-speed').addEventListener('input', (e) => {
+  state.settings.blobSpeed = parseFloat(e.target.value);
+  root.style.setProperty('--blob-speed', e.target.value);
+  schedSave();
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (confirm('Na pewno wyczyścić wszystkie dane?')) {
+    try { localStorage.removeItem(STORE_KEY); } catch(e) {}
+    location.reload();
+  }
+});
+
+applySettings();
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+function showToast(msg, duration = 2500) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, duration);
+}
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+function init() {
+  const h = location.hash.replace('#', '') || state.view || 'mindmap';
+  switchView(views[h] ? h : 'mindmap');
+  renderMindmap();
+  if (!state.pan || (state.pan.x === 0 && state.pan.y === 0)) centerMap();
+  else { applyTransform(); }
+}
+
+init();
+</script>
 </body>
 </html>
