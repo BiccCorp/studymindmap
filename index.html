@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyOS V0</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --secondary: #a855f7;
+      --bg-gradient: linear-gradient(135deg, #0f172a, #1e293b, #334155);
+      --font-main: 'Inter', system-ui, sans-serif;
+      --font-accent: 'JetBrains Mono', monospace;
+      --glass: rgba(255,255,255,0.08);
+      --glass-border: rgba(255,255,255,0.15);
+      --text: #e2e8f0;
+      --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-main);
+      color: var(--text);
+      background: var(--bg-gradient);
+      min-height: 100vh;
+      overflow: hidden;
+      transition: background 0.8s ease;
+    }
+    #bg-canvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: -1; pointer-events: none;
+    }
+
+    /* NAVIGATION DOCK */
+    #dock {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(12px);
+      padding: 10px 16px;
+      border-radius: 16px;
+      display: flex; gap: 12px;
+      box-shadow: var(--shadow);
+      z-index: 100;
+    }
+    .dock-btn {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid var(--glass-border);
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .dock-btn:hover, .dock-btn.active { background: var(--primary); transform: translateY(-4px); }
+    .dock-btn.active { border-color: var(--secondary); }
+
+    /* VIEWS */
+    #views {
+      position: absolute; top: 0; left: 0; width: 100%; height: calc(100vh - 90px);
+      padding: 24px;
+      overflow-y: auto;
+    }
+    .view { display: none; max-width: 1200px; margin: 0 auto; }
+    .view.active { display: block; animation: fadeSlide 0.4s ease; }
+    @keyframes fadeSlide { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* PERSISTENT TOOLS PANEL */
+    #tools-panel {
+      position: fixed; right: 20px; top: 20px;
+      width: 260px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(16px);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 16px;
+      box-shadow: var(--shadow);
+      z-index: 50;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    #tools-panel.collapsed { transform: translateX(300px); opacity: 0; }
+    .tool-box h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; color: var(--secondary); }
+    .tool-box input, .tool-box textarea {
+      width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
+      color: var(--text); padding: 8px; border-radius: 8px; font-family: inherit;
+    }
+    .tool-box textarea { height: 80px; resize: vertical; }
+    .btn { background: var(--primary); color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; margin-top: 4px; }
+    .btn:hover { opacity: 0.9; }
+
+    /* MINDMAP */
+    #mindmap-container {
+      position: relative; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.1); border-radius: 16px; overflow: hidden;
+    }
+    .node {
+      position: absolute; min-width: 100px; padding: 8px 12px;
+      background: var(--glass); border: 1px solid var(--glass-border);
+      border-radius: 8px; cursor: move; user-select: none;
+      transition: filter 0.3s, background 0.2s;
+    }
+    .node.selected { border-color: var(--secondary); box-shadow: 0 0 12px var(--secondary); }
+    .node.editing { background: rgba(255,255,255,0.15); }
+    .node.flashcard-blur { filter: blur(8px); cursor: pointer; }
+    #mindmap-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    #mindmap-svg line { stroke: var(--primary); stroke-width: 2; stroke-linecap: round; }
+
+    /* SETTINGS */
+    .setting-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+    .color-picker { width: 32px; height: 32px; border: none; background: transparent; cursor: pointer; }
+
+    /* UTILS */
+    .flex { display: flex; gap: 8px; align-items: center; }
+    .hidden { display: none !important; }
+    .toggle-mode { background: var(--secondary); color: white; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 13px; margin-bottom: 12px; }
+    .toggle-mode.active { background: #ef4444; }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <nav id="dock">
+    <button class="dock-btn active" data-view="mindmap" title="Mapa Myśli">🧠</button>
+    <button class="dock-btn" data-view="settings" title="Ustawienia">⚙️</button>
+  </nav>
+
+  <main id="views">
+    <section id="view-mindmap" class="view active">
+      <div class="flex" style="margin-bottom: 12px;">
+        <button id="btn-add-node" class="btn">+ Dodaj węzeł</button>
+        <button id="btn-connect-mode" class="btn">🔗 Tryb łączenia</button>
+        <button id="btn-export-json" class="btn">💾 Eksport JSON</button>
+        <button id="btn-import-json" class="btn">📂 Import JSON</button>
+        <button id="btn-export-png" class="btn">🖼️ Eksport PNG</button>
+        <button id="btn-flashcard" class="toggle-mode">🃏 Tryb Fiszek</button>
+      </div>
+      <div id="mindmap-container">
+        <svg id="mindmap-svg"></svg>
+      </div>
+    </section>
+
+    <section id="view-settings" class="view">
+      <h2>⚙️ Personalizacja</h2>
+      <div class="setting-row"><span>Kolor główny:</span> <input type="color" id="set-primary" class="color-picker" value="#6366f1"></div>
+      <div class="setting-row"><span>Kolor poboczny:</span> <input type="color" id="set-secondary" class="color-picker" value="#a855f7"></div>
+      <div class="setting-row"><span>Font główny:</span> 
+        <select id="set-font-main"><option value="'Inter', sans-serif">Inter</option><option value="'Roboto', sans-serif">Roboto</option><option value="serif">Serif</option></select>
+      </div>
+      <div class="setting-row"><span>Font akcent:</span> 
+        <select id="set-font-accent"><option value="'JetBrains Mono', monospace">Mono</option><option value="'Courier New', monospace">Courier</option></select>
+      </div>
+      <div class="setting-row"><span>Szybkość wizualizatora:</span> <input type="range" id="set-visual-speed" min="0.5" max="3" step="0.1" value="1"></div>
+      <button class="btn" id="btn-reset">🗑️ Resetuj dane</button>
+    </section>
+  </main>
+
+  <aside id="tools-panel">
+    <div class="tool-box">
+      <h3>⏱ Pomodoro</h3>
+      <div class="flex"><span id="pomo-display">25:00</span> <button id="pomo-toggle" class="btn">▶</button></div>
+    </div>
+    <div class="tool-box">
+      <h3>📻 Radio</h3>
+      <input type="text" id="radio-url" placeholder="URL strumienia (mp3/aac)">
+      <div class="flex" style="margin-top:6px;">
+        <button id="radio-play" class="btn">▶</button>
+        <input type="range" id="radio-vol" min="0" max="1" step="0.1" value="0.5" style="width:80px;">
+      </div>
+    </div>
+    <div class="tool-box">
+      <h3>📝 Notatnik</h3>
+      <textarea id="notes-area" placeholder="Szybkie myśli..."></textarea>
+    </div>
+    <div class="tool-box">
+      <h3>✅ Checklist</h3>
+      <div class="flex"><input type="text" id="check-input" placeholder="Nowe zadanie"><button id="check-add" class="btn">+</button></div>
+      <ul id="check-list" style="margin-top:8px; padding-left:18px;"></ul>
+    </div>
+  </aside>
+
+  <script>
+    // === STATE & STORAGE ===
+    const Store = {
+      key: 'studyos_v0',
+      load() {
+        const d = localStorage.getItem(this.key);
+        return d ? JSON.parse(d) : { mindmap: { nodes: [], links: [] }, notes: '', checklist: [], pomo: { time: 1500, running: false, mode: 'work' }, radioUrl: '', settings: {} };
+      },
+      save(data) { localStorage.setItem(this.key, JSON.stringify(data)); }
+    };
+    let state = Store.load();
+
+    // === ROUTER ===
+    const dockBtns = document.querySelectorAll('.dock-btn');
+    const views = document.querySelectorAll('.view');
+    window.addEventListener('hashchange', () => {
+      const hash = location.hash.slice(1) || 'mindmap';
+      dockBtns.forEach(b => b.classList.toggle('active', b.dataset.view === hash));
+      views.forEach(v => v.classList.toggle('active', v.id === `view-${hash}`));
+    });
+    dockBtns.forEach(b => b.addEventListener('click', () => location.hash = b.dataset.view));
+    if(!location.hash) location.hash = 'mindmap';
+
+    // === CANVAS VISUALIZER ===
+    const cvs = document.getElementById('bg-canvas');
+    const ctx = cvs.getContext('2d');
+    let blobs = Array(8).fill().map(() => ({ x: Math.random()*innerWidth, y: Math.random()*innerHeight, r: 50+Math.random()*100, vx: (Math.random()-0.5)*1, vy: (Math.random()-0.5)*1, hue: Math.random()*360 }));
+    let speed = 1;
+    function drawBg() {
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      ctx.fillRect(0,0,innerWidth,innerHeight);
+      blobs.forEach(b => {
+        b.x += b.vx * speed; b.y += b.vy * speed; b.hue += 0.5;
+        if(b.x < -b.r || b.x > innerWidth+b.r) b.vx *= -1;
+        if(b.y < -b.r || b.y > innerHeight+b.r) b.vy *= -1;
+        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+        g.addColorStop(0, `hsla(${b.hue}, 70%, 50%, 0.3)`);
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+      });
+      requestAnimationFrame(drawBg);
+    }
+    window.addEventListener('resize', () => { cvs.width = innerWidth; cvs.height = innerHeight; });
+    cvs.width = innerWidth; cvs.height = innerHeight; drawBg();
+
+    // === MINDMAP ENGINE ===
+    const container = document.getElementById('mindmap-container');
+    const svg = document.getElementById('mindmap-svg');
+    let nodes = state.mindmap.nodes;
+    let links = state.mindmap.links;
+    let selected = null, connectMode = false, flashcard = false;
+
+    function render() {
+      container.querySelectorAll('.node').forEach(n => n.remove());
+      svg.innerHTML = '';
+      nodes.forEach(n => {
+        const el = document.createElement('div');
+        el.className = 'node';
+        el.style.left = n.x + 'px'; el.style.top = n.y + 'px';
+        if(n.bg) el.style.background = n.bg;
+        if(flashcard && n.id !== 0) el.classList.add('flashcard-blur');
+        el.textContent = n.text;
+        el.dataset.id = n.id;
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          if(flashcard) { el.classList.remove('flashcard-blur'); return; }
+          if(connectMode) {
+            if(!selected) selected = n;
+            else if(selected.id !== n.id) { addLink(selected.id, n.id); selected = null; connectMode = false; document.getElementById('btn-connect-mode').classList.remove('active'); }
+          } else {
+            selected = n; container.querySelectorAll('.node').forEach(x => x.classList.remove('selected'));
+            el.classList.add('selected');
+          }
+        });
+        el.addEventListener('dblclick', () => {
+          const t = prompt('Edytuj tekst:', n.text);
+          if(t !== null) { n.text = t; save(); render(); }
+        });
+        // Drag
+        let drag = false, ox, oy;
+        el.addEventListener('mousedown', e => { drag = true; ox = e.clientX; oy = e.clientY; el.style.zIndex = 10; });
+        window.addEventListener('mousemove', e => { if(!drag) return; n.x += e.clientX - ox; n.y += e.clientY - oy; ox = e.clientX; oy = e.clientY; el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; drawLines(); });
+        window.addEventListener('mouseup', () => { drag = false; el.style.zIndex = ''; save(); });
+        container.appendChild(el);
+      });
+      drawLines();
+    }
+
+    function drawLines() {
+      svg.innerHTML = '';
+      links.forEach(l => {
+        const a = nodes.find(n => n.id === l.from), b = nodes.find(n => n.id === l.to);
+        if(!a || !b) return;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', a.x + 60); line.setAttribute('y1', a.y + 20);
+        line.setAttribute('x2', b.x + 60); line.setAttribute('y2', b.y + 20);
+        svg.appendChild(line);
+      });
+    }
+
+    function addNode() {
+      const id = Date.now();
+      const x = 100 + Math.random()*200, y = 100 + Math.random()*200;
+      const text = prompt('Nazwa węzła:', 'Nowy temat') || 'Węzeł';
+      nodes.push({ id, x, y, text, bg: '' });
+      save(); render();
+    }
+    function addLink(from, to) {
+      if(links.find(l => l.from === from && l.to === to) || links.find(l => l.from === to && l.to === from)) return;
+      links.push({ from, to }); save(); render();
+    }
+
+    document.getElementById('btn-add-node').onclick = addNode;
+    document.getElementById('btn-connect-mode').onclick = () => { connectMode = !connectMode; selected = null; document.getElementById('btn-connect-mode').classList.toggle('active', connectMode); };
+    document.getElementById('btn-flashcard').onclick = () => { flashcard = !flashcard; document.getElementById('btn-flashcard').classList.toggle('active', flashcard); render(); };
+
+    // Export/Import JSON
+    document.getElementById('btn-export-json').onclick = () => {
+      const blob = new Blob([JSON.stringify({nodes, links}, null, 2)], {type: 'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mindmap.json'; a.click();
+    };
+    document.getElementById('btn-import-json').onclick = () => {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
+      inp.onchange = e => { const f = e.target.files[0]; const r = new FileReader(); r.onload = () => { const d = JSON.parse(r.result); nodes = d.nodes || []; links = d.links || []; save(); render(); }; r.readAsText(f); };
+      inp.click();
+    };
+    document.getElementById('btn-export-png').onclick = async () => {
+      const canvas = await html2canvas(container);
+      const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'mindmap.png'; a.click();
+    };
+
+    // === PERSISTENT TOOLS ===
+    const pomoEl = document.getElementById('pomo-display');
+    const pomoToggle = document.getElementById('pomo-toggle');
+    let pomoInterval;
+
+    function updatePomo() {
+      const m = Math.floor(state.pomo.time / 60).toString().padStart(2,'0');
+      const s = (state.pomo.time % 60).toString().padStart(2,'0');
+      pomoEl.textContent = `${m}:${s}`;
+      Store.save(state);
+    }
+    pomoToggle.onclick = () => {
+      state.pomo.running = !state.pomo.running;
+      pomoToggle.textContent = state.pomo.running ? '⏸' : '▶';
+      if(state.pomo.running) pomoInterval = setInterval(() => { if(state.pomo.time > 0) state.pomo.time--; else { state.pomo.running = false; clearInterval(pomoInterval); pomoToggle.textContent = '▶'; alert('Sesja zakończona!'); } updatePomo(); }, 1000);
+      else clearInterval(pomoInterval);
+      Store.save(state);
+    };
+    updatePomo();
+
+    const radio = new Audio();
+    document.getElementById('radio-play').onclick = () => { radio.src = document.getElementById('radio-url').value; radio.play(); };
+    document.getElementById('radio-vol').oninput = e => radio.volume = e.target.value;
+
+    const notes = document.getElementById('notes-area');
+    notes.value = state.notes;
+    notes.oninput = () => { state.notes = notes.value; Store.save(state); };
+
+    const checkList = document.getElementById('check-list');
+    function renderChecks() {
+      checkList.innerHTML = '';
+      state.checklist.forEach((c, i) => {
+        const li = document.createElement('li'); li.style.marginBottom = '4px';
+        li.innerHTML = `<input type="checkbox" ${c.done?'checked':''} onclick="toggleCheck(${i})"> <span style="${c.done?'text-decoration:line-through;opacity:0.5':''}">${c.text}</span> <button onclick="deleteCheck(${i})" style="background:none;border:none;cursor:pointer;">❌</button>`;
+        checkList.appendChild(li);
+      });
+    }
+    document.getElementById('check-add').onclick = () => {
+      const t = document.getElementById('check-input').value.trim();
+      if(t) { state.checklist.push({text: t, done: false}); document.getElementById('check-input').value = ''; Store.save(state); renderChecks(); }
+    };
+    window.toggleCheck = i => { state.checklist[i].done = !state.checklist[i].done; Store.save(state); renderChecks(); };
+    window.deleteCheck = i => { state.checklist.splice(i,1); Store.save(state); renderChecks(); };
+    renderChecks();
+
+    // === SETTINGS ===
+    const applyTheme = () => {
+      document.documentElement.style.setProperty('--primary', document.getElementById('set-primary').value);
+      document.documentElement.style.setProperty('--secondary', document.getElementById('set-secondary').value);
+      document.documentElement.style.setProperty('--font-main', document.getElementById('set-font-main').value);
+      document.documentElement.style.setProperty('--font-accent', document.getElementById('set-font-accent').value);
+      speed = parseFloat(document.getElementById('set-visual-speed').value);
+      state.settings = { primary: document.getElementById('set-primary').value, secondary: document.getElementById('set-secondary').value, fontMain: document.getElementById('set-font-main').value, fontAccent: document.getElementById('set-font-accent').value, speed };
+      Store.save(state);
+    };
+    ['set-primary','set-secondary','set-font-main','set-font-accent','set-visual-speed'].forEach(id => document.getElementById(id).oninput = applyTheme);
+    document.getElementById('btn-reset').onclick = () => { if(confirm('Usunąć wszystkie dane?')) { localStorage.removeItem(Store.key); location.reload(); } };
+
+    // Load theme
+    if(state.settings) {
+      document.getElementById('set-primary').value = state.settings.primary || '#6366f1';
+      document.getElementById('set-secondary').value = state.settings.secondary || '#a855f7';
+      document.getElementById('set-font-main').value = state.settings.fontMain || "'Inter', sans-serif";
+      document.getElementById('set-font-accent').value = state.settings.fontAccent || "'JetBrains Mono', monospace";
+      document.getElementById('set-visual-speed').value = state.settings.speed || 1;
+      applyTheme();
+    }
+
+    // Init
+    render();
+  </script>
+</body>
+</html>
