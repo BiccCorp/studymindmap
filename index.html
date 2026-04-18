@@ -1200,11 +1200,14 @@ function makeNodeDraggable(el, node) {
       clearTimeout(ctxLeaveTimer);
     }
   });
-  el.addEventListener('mouseleave', () => {
-    hoverTimer = setTimeout(() => {
-      ctxLeaveTimer = setTimeout(hideCtx, 220);
-    }, 80);
-  });
+el.addEventListener('mouseleave', e => {
+  if (e.relatedTarget && (e.relatedTarget === nodeCtx || nodeCtx.contains(e.relatedTarget))) {
+    return;
+  }
+  hoverTimer = setTimeout(() => {
+    ctxLeaveTimer = setTimeout(hideCtx, 220);
+  }, 80);
+});
 
   el.addEventListener('mousedown', e => {
     if (e.button!==0) return;
