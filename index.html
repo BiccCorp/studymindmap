@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyOS v1</title>
+  <title>StudyOS v2</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     :root {
@@ -14,63 +14,71 @@
       --text: #e2e8f0; --shadow: 0 10px 40px rgba(0,0,0,0.5);
       --radius: 14px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     body { font-family: var(--font-main); color: var(--text); background: var(--bg-gradient); min-height: 100vh; overflow: hidden; transition: background 0.8s ease; }
     #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
 
-    /* DOCK */
+    /* DOCK & DRAWER */
     #dock { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(14px); padding: 10px 18px; border-radius: 20px; display: flex; gap: 10px; box-shadow: var(--shadow); z-index: 1000; }
     .dock-btn { width: 46px; height: 46px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: var(--text); font-size: 18px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-    .dock-btn:hover, .dock-btn.active { background: var(--primary); transform: translateY(-5px); box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+    .dock-btn:hover, .dock-btn.active { background: var(--primary); transform: translateY(-5px); }
     .dock-btn.active { border-color: var(--secondary); }
+    #tools-drawer { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(12px); padding: 8px; border-radius: 12px; display: flex; gap: 6px; opacity: 0; pointer-events: none; transition: all 0.2s; box-shadow: var(--shadow); }
+    #tools-drawer.open { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+    .tool-toggle { background: rgba(255,255,255,0.15); border: none; color: var(--text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+    .tool-toggle:hover { background: var(--secondary); }
 
     /* MAIN VIEWS */
     #views { position: absolute; top: 0; left: 0; width: 100%; height: calc(100vh - 80px); padding: 24px; overflow-y: auto; }
     .view { display: none; max-width: 1100px; margin: 0 auto; }
-    .view.active { display: block; animation: fadeSlide 0.35s ease; }
-    @keyframes fadeSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .view.active { display: block; animation: fadeSlide 0.3s ease; }
+    @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
     /* FLOATING WINDOWS */
     #windows-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    .window { position: absolute; background: rgba(15,23,42,0.85); border: 1px solid var(--glass-border); backdrop-filter: blur(16px); border-radius: var(--radius); box-shadow: var(--shadow); pointer-events: auto; min-width: 280px; overflow: hidden; display: flex; flex-direction: column; }
-    .window-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0,0,0,0.3); cursor: grab; user-select: none; border-bottom: 1px solid var(--glass-border); }
+    .window { position: absolute; background: rgba(15,23,42,0.88); border: 1px solid var(--glass-border); backdrop-filter: blur(16px); border-radius: var(--radius); box-shadow: var(--shadow); pointer-events: auto; min-width: 280px; overflow: hidden; display: flex; flex-direction: column; }
+    .window-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0,0,0,0.35); cursor: grab; border-bottom: 1px solid var(--glass-border); }
     .window-header:active { cursor: grabbing; }
     .window-title { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
-    .window-controls { display: flex; gap: 6px; }
-    .win-btn { width: 20px; height: 20px; border-radius: 50%; border: none; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
-    .win-close { background: #ef4444; color: white; }
-    .win-close:hover { background: #dc2626; transform: scale(1.1); }
-    .window-body { padding: 12px; flex: 1; overflow-y: auto; }
+    .win-close { width: 20px; height: 20px; border-radius: 50%; border: none; background: #ef4444; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; transition: 0.15s; }
+    .win-close:hover { transform: scale(1.1); background: #dc2626; }
+    .window-body { padding: 12px; flex: 1; overflow-y: auto; max-height: 400px; }
 
-    /* MIND MAP */
-    #mm-container { position: relative; width: 100%; height: 65vh; background: rgba(0,0,0,0.15); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--glass-border); }
-    .node { position: absolute; min-width: 110px; padding: 8px 10px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 10px; cursor: move; user-select: none; transition: filter 0.25s, transform 0.15s; font-size: 13px; text-align: center; }
-    .node.selected { border-color: var(--secondary); box-shadow: 0 0 12px rgba(168,85,247,0.5); transform: scale(1.03); }
-    .node.editing { background: rgba(255,255,255,0.18); }
-    .node.flashcard-blur { filter: blur(6px); cursor: pointer; }
-    #mm-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    /* MINDMAP VIEWPORT & WORLD */
+    #mm-viewport { position: relative; width: 100%; height: 65vh; background: rgba(0,0,0,0.15); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--glass-border); cursor: grab; }
+    #mm-viewport.panning { cursor: grabbing; }
+    #mm-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; width: 0; height: 0; }
+    #mm-svg { position: absolute; top: -4000px; left: -4000px; width: 8000px; height: 8000px; pointer-events: none; }
     #mm-svg line { stroke: var(--primary); stroke-width: 2; stroke-linecap: round; opacity: 0.8; }
     .mm-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 
-    /* TOOLS INSIDE WINDOWS */
-    .pomo-display { font-size: 28px; font-family: var(--font-accent); text-align: center; margin: 10px 0; letter-spacing: 2px; }
-    .pomo-status { font-size: 12px; text-align: center; color: #94a3b8; margin-bottom: 8px; }
-    .pomo-controls { display: flex; justify-content: center; gap: 8px; }
+    /* NODES & HOVER MENU */
+    .node { position: absolute; min-width: 100px; padding: 8px 10px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 10px; cursor: move; font-size: 13px; text-align: center; transition: box-shadow 0.2s, transform 0.15s; }
+    .node.selected { border-color: var(--secondary); box-shadow: 0 0 14px rgba(168,85,247,0.5); transform: scale(1.04); }
+    .node.flashcard-blur { filter: blur(6px); cursor: pointer; }
+    .node-menu { position: absolute; background: #1e293b; border: 1px solid var(--glass-border); border-radius: 10px; padding: 8px; box-shadow: var(--shadow); z-index: 500; display: none; pointer-events: auto; }
+    .node-menu.visible { display: block; }
+    .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 6px; }
+    .color-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+    .color-dot:hover { transform: scale(1.2); border-color: white; }
+    .menu-btn { width: 100%; padding: 5px; background: rgba(255,255,255,0.1); border: none; color: var(--text); border-radius: 6px; cursor: pointer; font-size: 11px; }
+    .menu-btn:hover { background: #ef4444; }
+
+    /* UI ELEMENTS */
     .input-row { display: flex; gap: 8px; margin: 8px 0; }
     .input-row input, .input-row textarea { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); color: var(--text); padding: 8px; border-radius: 8px; font-family: inherit; }
     .input-row textarea { height: 100px; resize: vertical; }
     .btn { background: var(--primary); color: white; border: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: 0.15s; }
     .btn:hover { background: #5558e6; transform: translateY(-1px); }
-    .btn.sec { background: var(--secondary); }
     .btn.outline { background: transparent; border: 1px solid var(--glass-border); color: var(--text); }
     .btn.outline:hover { background: rgba(255,255,255,0.1); }
     .check-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
     .check-item.done span { text-decoration: line-through; opacity: 0.5; }
-    .radio-ctrl { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .pomo-display { font-size: 28px; font-family: var(--font-accent); text-align: center; margin: 10px 0; letter-spacing: 2px; }
+    .pomo-status { font-size: 12px; text-align: center; color: #94a3b8; margin-bottom: 8px; }
+    .pomo-controls { display: flex; justify-content: center; gap: 8px; }
     .setting-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; font-size: 13px; }
     .color-picker { width: 30px; height: 30px; border: none; background: transparent; cursor: pointer; }
-    .toggle-mode { background: var(--secondary); color: white; padding: 5px 10px; border-radius: 16px; cursor: pointer; font-size: 12px; margin: 4px 0; display: inline-block; }
-    .toggle-mode.active { background: #ef4444; }
   </style>
 </head>
 <body>
@@ -78,21 +86,32 @@
 
   <nav id="dock">
     <button class="dock-btn active" data-view="mindmap" title="Mapa Myśli">🧠</button>
+    <button class="dock-btn" id="dock-tools" title="Narzędzia">🛠️</button>
     <button class="dock-btn" data-view="settings" title="Ustawienia">⚙️</button>
   </nav>
+  <div id="tools-drawer">
+    <button class="tool-toggle" data-win="pomo-win">⏱ Pomodoro</button>
+    <button class="tool-toggle" data-win="radio-win">📻 Radio</button>
+    <button class="tool-toggle" data-win="notes-win">📝 Notatnik</button>
+    <button class="tool-toggle" data-win="check-win">✅ Checklist</button>
+  </div>
 
   <main id="views">
     <section id="view-mindmap" class="view active">
       <div class="mm-toolbar">
         <button class="btn" id="mm-add">+ Nowy węzeł</button>
-        <button class="btn outline" id="mm-link">🔗 Łącz</button>
-        <button class="btn outline" id="mm-color">🎨 Kolor</button>
-        <button class="btn outline" id="mm-flashcard">🃏 Fiszk</button>
+        <button class="btn outline" id="mm-flashcard">🃏 Tryb Fiszek</button>
         <button class="btn outline" id="mm-exp-json">💾 JSON</button>
         <button class="btn outline" id="mm-imp-json">📂 Import</button>
         <button class="btn outline" id="mm-exp-png">🖼️ PNG</button>
+        <span style="margin-left:auto;font-size:12px;color:#94a3b8;">Scroll: zoom | Drag tła: pan | Przeciągnij węzeł na inny: połącz</span>
       </div>
-      <div id="mm-container"><svg id="mm-svg"></svg></div>
+      <div id="mm-viewport">
+        <div id="mm-world">
+          <svg id="mm-svg"></svg>
+          <!-- Węzły będą dodawane dynamicznie -->
+        </div>
+      </div>
     </section>
 
     <section id="view-settings" class="view">
@@ -106,146 +125,185 @@
   </main>
 
   <div id="windows-container"></div>
+  <div id="node-hover-menu" class="node-menu">
+    <div class="color-grid" id="palette-grid"></div>
+    <button class="menu-btn" id="del-links-btn">🗑️ Usuń wszystkie połączenia</button>
+  </div>
 
   <script>
     // === 1. STATE & STORAGE ===
-    const Store = { key: 'studyos_v1', saveDelay: 300, timer: null };
+    const Store = { key: 'studyos_v2', saveDelay: 250, timer: null };
     Store.state = {
-      windows: {}, mm: { nodes: [{id:1, x:400, y:250, text:'Centrum', color:''}], links:[] },
-      notes: '', checklist: [], pomo: { work: 25, break: 5, time: 25*60, running: false, mode: 'work', lastTick: Date.now() },
+      windowsOpen: [],
+      mm: { nodes: [{id:1, x:0, y:0, text:'Centrum', color:''}], links: [], zoom: 1, panX: 0, panY: 0 },
+      notes: '', checklist: [],
+      pomo: { work: 25, break: 5, time: 25*60, running: false, mode: 'work', lastTick: Date.now() },
       radioUrl: '', settings: { primary:'#6366f1', secondary:'#a855f7', fontMain:"'Inter', sans-serif", speed:0.8 }
     };
-    Store.load = function() {
-      try { const d = localStorage.getItem(this.key); if(d) Object.assign(this.state, JSON.parse(d)); } catch(e){}
-    };
-    Store.save = function() {
-      clearTimeout(this.timer);
-      this.timer = setTimeout(() => localStorage.setItem(this.key, JSON.stringify(this.state)), this.saveDelay);
-    };
+    Store.load = () => { try { const d = localStorage.getItem(Store.key); if(d) Object.assign(Store.state, JSON.parse(d)); } catch(e){} };
+    Store.save = () => { clearTimeout(Store.timer); Store.timer = setTimeout(() => localStorage.setItem(Store.key, JSON.stringify(Store.state)), Store.saveDelay); };
     Store.load();
 
-    // === 2. WINDOW MANAGER ===
+    // === 2. WINDOW MANAGER (Toggleable) ===
     const winContainer = document.getElementById('windows-container');
     let winZ = 100;
-    function createWindow(id, title, content, opts = {}) {
-      if(document.getElementById(id)) return document.getElementById(id);
+    const toolDefs = {
+      'pomo-win': { title: '⏱ Pomodoro', x: 60, y: 50, w: 260 },
+      'radio-win': { title: '📻 Radio', x: 340, y: 50, w: 260 },
+      'notes-win': { title: '📝 Notatnik', x: 620, y: 50, w: 280 },
+      'check-win': { title: '✅ Checklist', x: 60, y: 300, w: 260 }
+    };
+
+    function toggleWindow(id) {
+      const el = document.getElementById(id);
+      if(el) { el.remove(); Store.state.windowsOpen = Store.state.windowsOpen.filter(w=>w!==id); }
+      else createWindow(id);
+      Store.save();
+    }
+    function createWindow(id) {
+      if(document.getElementById(id)) return;
+      const def = toolDefs[id];
       const win = document.createElement('div');
       win.className = 'window'; win.id = id;
-      win.style.left = (opts.x ?? 60 + Object.keys(Store.state.windows).length*240) + 'px';
-      win.style.top = (opts.y ?? 40 + Object.keys(Store.state.windows).length*30) + 'px';
-      win.style.zIndex = ++winZ;
-      win.innerHTML = `
-        <div class="window-header"><span class="window-title">${title}</span><div class="window-controls"><button class="win-btn win-close" title="Zamknij">✕</button></div></div>
-        <div class="window-body">${content}</div>`;
+      win.style.cssText = `left:${def.x}px; top:${def.y}px; width:${def.w}px; z-index:${++winZ};`;
+      win.innerHTML = `<div class="window-header"><span class="window-title">${def.title}</span><button class="win-close">✕</button></div><div class="window-body" id="${id}-body"></div>`;
       winContainer.appendChild(win);
-      Store.state.windows[id] = { x: parseFloat(win.style.left), y: parseFloat(win.style.top) }; Store.save();
-
-      // Drag
-      const header = win.querySelector('.window-header');
-      let isDrag = false, ox, oy;
-      header.addEventListener('mousedown', e => { isDrag = true; ox = e.clientX - win.offsetLeft; oy = e.clientY - win.offsetTop; win.style.zIndex = ++winZ; e.preventDefault(); });
-      window.addEventListener('mousemove', e => { if(!isDrag) return; win.style.left = (e.clientX - ox) + 'px'; win.style.top = (e.clientY - oy) + 'px'; });
-      window.addEventListener('mouseup', () => { if(isDrag) { isDrag = false; Store.state.windows[id] = { x: parseFloat(win.style.left), y: parseFloat(win.style.top) }; Store.save(); }});
-      win.querySelector('.win-close').onclick = () => { win.remove(); delete Store.state.windows[id]; Store.save(); };
-      win.addEventListener('mousedown', () => win.style.zIndex = ++winZ);
-      return win;
+      Store.state.windowsOpen.push(id);
+      win.querySelector('.win-close').onclick = () => toggleWindow(id);
+      win.onmousedown = () => win.style.zIndex = ++winZ;
+      dragWindow(win);
+      populateToolContent(id);
     }
-
-    // === 3. TOOL WINDOWS INIT ===
-    function initPomoWindow() {
-      createWindow('pomo-win', '⏱ Pomodoro', `
-        <div class="pomo-status" id="pomo-mode">Praca</div>
-        <div class="pomo-display" id="pomo-time">25:00</div>
-        <div class="pomo-controls"><button class="btn" id="pomo-start">▶ Start</button><button class="btn outline" id="pomo-reset">🔄 Reset</button></div>
-        <div class="input-row" style="margin-top:12px;"><input type="number" id="pomo-work" value="${Store.state.pomo.work}" min="1" max="90"><span>praca (min)</span><input type="number" id="pomo-break" value="${Store.state.pomo.break}" min="1" max="60"><span>przerwa</span></div>
-      `, {x: 80, y: 50});
-      updatePomoUI();
-      document.getElementById('pomo-start').onclick = togglePomo;
-      document.getElementById('pomo-reset').onclick = resetPomo;
-      ['pomo-work','pomo-break'].forEach(id => document.getElementById(id).onchange = e => { Store.state.pomo[id.replace('pomo-','')] = parseInt(e.target.value)||25; Store.save(); resetPomo(); });
+    function dragWindow(win) {
+      const hdr = win.querySelector('.window-header');
+      let isDrag=false, ox, oy;
+      hdr.onmousedown = e => { isDrag=true; ox=e.clientX-win.offsetLeft; oy=e.clientY-win.offsetTop; win.style.zIndex=++winZ; e.preventDefault(); };
+      window.onmousemove = e => { if(!isDrag)return; win.style.left=(e.clientX-ox)+'px'; win.style.top=(e.clientY-oy)+'px'; };
+      window.onmouseup = () => isDrag=false;
     }
+    function populateToolContent(id) {
+      const body = document.getElementById(`${id}-body`);
+      if(id==='pomo-win') {
+        body.innerHTML = `<div class="pomo-status" id="pomo-mode">Praca</div><div class="pomo-display" id="pomo-time">25:00</div><div class="pomo-controls"><button class="btn" id="pomo-start">▶ Start</button><button class="btn outline" id="pomo-reset">🔄</button></div><div class="input-row"><input type="number" id="pomo-work" value="${Store.state.pomo.work}" min="1"><span>praca</span><input type="number" id="pomo-break" value="${Store.state.pomo.break}" min="1"><span>przerwa</span></div>`;
+        updatePomoUI();
+        document.getElementById('pomo-start').onclick = togglePomo;
+        document.getElementById('pomo-reset').onclick = resetPomo;
+        ['pomo-work','pomo-break'].forEach(id2 => document.getElementById(id2).onchange = e => { Store.state.pomo[id2.replace('pomo-','')] = parseInt(e.target.value)||25; resetPomo(); });
+      } else if(id==='radio-win') {
+        body.innerHTML = `<input type="text" id="radio-url" placeholder="URL mp3/aac" value="${Store.state.radioUrl}" style="width:100%"><div style="margin-top:8px;display:flex;gap:8px;"><button class="btn" id="radio-play">▶ Graj</button><input type="range" id="radio-vol" min="0" max="1" step="0.1" value="0.5" style="flex:1"></div>`;
+        const audio = new Audio(); audio.crossOrigin = 'anonymous';
+        document.getElementById('radio-play').onclick = () => { audio.src = document.getElementById('radio-url').value; audio.paused ? audio.play().catch(()=>alert('❌ CORS/HTTPS error')) : audio.pause(); document.getElementById('radio-play').textContent = audio.paused ? '▶ Graj' : '⏸ Pauza'; Store.state.radioUrl = document.getElementById('radio-url').value; Store.save(); };
+        document.getElementById('radio-vol').oninput = e => audio.volume = e.target.value;
+      } else if(id==='notes-win') {
+        body.innerHTML = `<textarea id="notes-txt" placeholder="Myśli, linki, definicje...">${Store.state.notes}</textarea>`;
+        document.getElementById('notes-txt').oninput = e => { Store.state.notes = e.target.value; Store.save(); };
+      } else if(id==='check-win') {
+        body.innerHTML = `<div class="input-row"><input type="text" id="check-inp" placeholder="Zadanie"><button class="btn" id="check-add">+</button></div><div id="check-list"></div>`;
+        renderChecks();
+        document.getElementById('check-add').onclick = () => { const t=document.getElementById('check-inp').value.trim(); if(!t)return; Store.state.checklist.push({id:Date.now(),text:t,done:false}); document.getElementById('check-inp').value=''; Store.save(); renderChecks(); };
+      }
+    }
+    function renderChecks() {
+      const list = document.getElementById('check-list'); list.innerHTML='';
+      Store.state.checklist.forEach(c => { list.innerHTML += `<div class="check-item ${c.done?'done':''}"><input type="checkbox" ${c.done?'checked':''} onchange="toggleCheck(${c.id})"><span>${c.text}</span><button class="btn outline" style="padding:2px 6px;margin-left:auto;" onclick="delCheck(${c.id})">✕</button></div>`; });
+    }
+    window.toggleCheck = id => { const c=Store.state.checklist.find(x=>x.id===id); if(c){c.done=!c.done; Store.save(); renderChecks();} };
+    window.delCheck = id => { Store.state.checklist=Store.state.checklist.filter(x=>x.id!==id); Store.save(); renderChecks(); };
 
+    // Drawer Toggle
+    const drawer = document.getElementById('tools-drawer');
+    document.getElementById('dock-tools').onclick = () => drawer.classList.toggle('open');
+    document.querySelectorAll('.tool-toggle').forEach(btn => btn.onclick = () => toggleWindow(btn.dataset.win));
+    // Restore open windows on load
+    Store.state.windowsOpen.forEach(id => createWindow(id));
+
+    // === 3. POMODORO LOGIC ===
     let pomoInterval;
     function updatePomoUI() {
+      if(!document.getElementById('pomo-time')) return;
       const m = Math.floor(Store.state.pomo.time/60).toString().padStart(2,'0');
       const s = (Store.state.pomo.time%60).toString().padStart(2,'0');
       document.getElementById('pomo-time').textContent = `${m}:${s}`;
-      document.getElementById('pomo-mode').textContent = Store.state.pomo.mode === 'work' ? '🔴 Praca' : '🟢 Przerwa';
+      document.getElementById('pomo-mode').textContent = Store.state.pomo.mode==='work' ? '🔴 Praca' : '🟢 Przerwa';
       document.getElementById('pomo-start').textContent = Store.state.pomo.running ? '⏸ Pauza' : '▶ Start';
     }
     function togglePomo() {
       Store.state.pomo.running = !Store.state.pomo.running;
-      if(Store.state.pomo.running) {
-        Store.state.pomo.lastTick = Date.now();
-        pomoInterval = setInterval(() => {
-          const delta = Math.floor((Date.now() - Store.state.pomo.lastTick)/1000);
-          if(delta >= 1) { Store.state.pomo.time -= delta; Store.state.pomo.lastTick = Date.now(); }
-          if(Store.state.pomo.time <= 0) { switchPomoMode(); }
-          updatePomoUI(); Store.save();
-        }, 1000);
-      } else { clearInterval(pomoInterval); }
+      if(Store.state.pomo.running) { Store.state.pomo.lastTick = Date.now(); pomoInterval = setInterval(tickPomo, 1000); }
+      else clearInterval(pomoInterval);
       updatePomoUI(); Store.save();
     }
-    function resetPomo() { clearInterval(pomoInterval); Store.state.pomo.running = false; Store.state.pomo.time = Store.state.pomo.mode === 'work' ? Store.state.pomo.work*60 : Store.state.pomo.break*60; updatePomoUI(); Store.save(); }
+    function tickPomo() {
+      const delta = Math.floor((Date.now()-Store.state.pomo.lastTick)/1000);
+      if(delta>=1) { Store.state.pomo.time -= delta; Store.state.pomo.lastTick = Date.now(); }
+      if(Store.state.pomo.time<=0) switchPomoMode();
+      updatePomoUI(); Store.save();
+    }
+    function resetPomo() { clearInterval(pomoInterval); Store.state.pomo.running=false; Store.state.pomo.time = Store.state.pomo.mode==='work' ? Store.state.pomo.work*60 : Store.state.pomo.break*60; updatePomoUI(); Store.save(); }
     function switchPomoMode() {
-      clearInterval(pomoInterval); Store.state.pomo.running = false;
-      if(Store.state.pomo.mode === 'work') { Store.state.pomo.mode = 'break'; alert('💡 Czas na przerwę!'); }
-      else { Store.state.pomo.mode = 'work'; alert('🎯 Czas wracać do pracy!'); }
+      clearInterval(pomoInterval); Store.state.pomo.running=false;
+      if(Store.state.pomo.mode==='work') { Store.state.pomo.mode='break'; alert('💡 Czas na przerwę!'); }
+      else { Store.state.pomo.mode='work'; alert('🎯 Czas wracać do pracy!'); }
       resetPomo();
     }
 
-    function initRadioWindow() {
-      createWindow('radio-win', '📻 Radio', `
-        <input type="text" id="radio-url" placeholder="URL strumienia mp3/aac" value="${Store.state.radioUrl}">
-        <div class="radio-ctrl"><button class="btn" id="radio-play">▶ Graj</button><input type="range" id="radio-vol" min="0" max="1" step="0.1" value="0.5" style="width:70px;"></div>
-      `, {x: 350, y: 50});
-      const audio = new Audio(); audio.crossOrigin = 'anonymous';
-      document.getElementById('radio-play').onclick = () => {
-        audio.src = document.getElementById('radio-url').value;
-        document.getElementById('radio-play').textContent = audio.paused ? '▶ Graj' : '⏸ Pauza';
-        audio.paused ? audio.play() : audio.pause();
-        Store.state.radioUrl = document.getElementById('radio-url').value; Store.save();
-      };
-      document.getElementById('radio-vol').oninput = e => audio.volume = e.target.value;
-      audio.onerror = () => alert('❌ Nie udało się połączyć ze strumieniem. Sprawdź CORS/HTTPS.');
-    }
-
-    function initNotesWindow() {
-      createWindow('notes-win', '📝 Notatnik', `<textarea id="notes-txt" placeholder="Szybkie myśli, definicje, linki...">${Store.state.notes}</textarea>`, {x: 620, y: 50});
-      document.getElementById('notes-txt').oninput = e => { Store.state.notes = e.target.value; Store.save(); };
-    }
-
-    function initCheckWindow() {
-      const win = createWindow('check-win', '✅ Checklist', `
-        <div class="input-row"><input type="text" id="check-inp" placeholder="Nowe zadanie"><button class="btn" id="check-add">+</button></div>
-        <div id="check-list" style="margin-top:8px;"></div>
-      `, {x: 80, y: 320});
-      renderChecks();
-      document.getElementById('check-add').onclick = () => {
-        const t = document.getElementById('check-inp').value.trim(); if(!t) return;
-        Store.state.checklist.push({id: Date.now(), text: t, done: false}); document.getElementById('check-inp').value = ''; Store.save(); renderChecks();
-      };
-    }
-    function renderChecks() {
-      const list = document.getElementById('check-list'); list.innerHTML = '';
-      Store.state.checklist.forEach(c => {
-        list.innerHTML += `<div class="check-item ${c.done?'done':''}"><input type="checkbox" ${c.done?'checked':''} onchange="toggleCheck(${c.id})"><span>${c.text}</span><button class="btn outline" style="padding:2px 6px;margin-left:auto;" onclick="delCheck(${c.id})">✕</button></div>`;
-      });
-    }
-    window.toggleCheck = id => { const c = Store.state.checklist.find(x=>x.id===id); if(c) { c.done = !c.done; Store.save(); renderChecks(); }};
-    window.delCheck = id => { Store.state.checklist = Store.state.checklist.filter(x=>x.id!==id); Store.save(); renderChecks(); };
-
-    // Init tools on load
-    initPomoWindow(); initRadioWindow(); initNotesWindow(); initCheckWindow();
-
-    // === 4. MIND MAP ENGINE ===
-    const mmCont = document.getElementById('mm-container');
-    const mmSvg = document.getElementById('mm-svg');
+    // === 4. MINDMAP ENGINE (Zoom, Pan, Drag-Drop Link, Hover Menu) ===
+    const viewport = document.getElementById('mm-viewport');
+    const world = document.getElementById('mm-world');
+    const svg = document.getElementById('mm-svg');
+    let vp = { x: Store.state.mm.panX, y: Store.state.mm.panY, scale: Store.state.mm.zoom || 1 };
     let nodes = Store.state.mm.nodes, links = Store.state.mm.links;
-    let selected = null, linking = false, flashMode = false;
+    let flashMode = false, selectedNode = null, dragNode = null, dragOff = {x:0,y:0};
+    let hoverMenu = document.getElementById('node-hover-menu');
+    let menuHideTimer = null;
 
-    function renderMM() {
-      mmCont.querySelectorAll('.node').forEach(n => n.remove()); mmSvg.innerHTML = '';
+    function updateTransform() {
+      world.style.transform = `translate(${vp.x}px, ${vp.y}px) scale(${vp.scale})`;
+      Store.state.mm.panX = vp.x; Store.state.mm.panY = vp.y; Store.state.mm.zoom = vp.scale;
+    }
+    updateTransform();
+
+    // Zoom
+    viewport.onwheel = e => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      vp.scale = Math.min(2.5, Math.max(0.2, vp.scale + delta));
+      updateTransform(); Store.save();
+    };
+
+    // Pan (Background Drag)
+    let isPanning = false, panStart = {x:0,y:0};
+    viewport.onmousedown = e => {
+      if(e.target.closest('.node')) return;
+      isPanning = true; panStart = {x: e.clientX - vp.x, y: e.clientY - vp.y};
+      viewport.classList.add('panning');
+    };
+    window.onmousemove = e => {
+      if(isPanning) { vp.x = e.clientX - panStart.x; vp.y = e.clientY - panStart.y; updateTransform(); Store.save(); }
+      if(dragNode) {
+        const wx = (e.clientX - vp.x) / vp.scale - dragOff.x;
+        const wy = (e.clientY - vp.y) / vp.scale - dragOff.y;
+        dragNode.el.style.left = wx + 'px'; dragNode.el.style.top = wy + 'px';
+        dragNode.data.x = wx; dragNode.data.y = wy;
+        drawLines();
+      }
+    };
+    window.onmouseup = e => {
+      isPanning = false; viewport.classList.remove('panning');
+      if(dragNode) {
+        // Check drop on another node
+        const wx = (e.clientX - vp.x) / vp.scale;
+        const wy = (e.clientY - vp.y) / vp.scale;
+        const target = nodes.find(n => n.id !== dragNode.data.id && Math.hypot(n.x - wx, n.y - wy) < 60);
+        if(target && !links.find(l => (l.from===dragNode.data.id && l.to===target.id) || (l.from===target.id && l.to===dragNode.data.id))) {
+          links.push({from: dragNode.data.id, to: target.id}); Store.save(); renderNodes(); drawLines();
+        }
+        dragNode = null; Store.save();
+      }
+    };
+
+    function renderNodes() {
+      world.querySelectorAll('.node').forEach(n => n.remove());
       nodes.forEach(n => {
         const el = document.createElement('div');
         el.className = 'node'; el.dataset.id = n.id;
@@ -253,69 +311,81 @@
         if(n.color) el.style.background = n.color;
         if(flashMode && n.id !== nodes[0]?.id) el.classList.add('flashcard-blur');
         el.textContent = n.text;
-        mmCont.appendChild(el);
+        world.appendChild(el);
 
-        // Drag
-        let drag = false, ox, oy;
-        el.addEventListener('mousedown', e => {
+        el.onmousedown = e => {
+          e.stopPropagation();
           if(flashMode) { el.classList.remove('flashcard-blur'); return; }
-          if(linking) {
-            if(!selected) { selected = n; el.classList.add('selected'); }
-            else if(selected.id !== n.id) { addLink(selected.id, n.id); selected = null; linking = false; document.getElementById('mm-link').classList.remove('active'); }
-            return;
-          }
-          drag = true; ox = e.offsetX; oy = e.offsetY; el.classList.add('selected'); el.style.zIndex = 20; e.stopPropagation();
-        });
-        window.addEventListener('mousemove', e => { if(!drag) return; n.x = e.clientX - mmCont.getBoundingClientRect().left - ox; n.y = e.clientY - mmCont.getBoundingClientRect().top - oy; el.style.left = n.x+'px'; el.style.top = n.y+'px'; drawLines(); });
-        window.addEventListener('mouseup', () => { drag = false; el.style.zIndex = ''; Store.save(); });
-        el.addEventListener('dblclick', () => { const t = prompt('Edytuj:', n.text); if(t!==null) { n.text = t; renderMM(); Store.save(); }});
-        el.addEventListener('click', e => { e.stopPropagation(); if(!flashMode && !linking) { selected = (selected===n)?null:n; document.querySelectorAll('.node').forEach(x=>x.classList.toggle('selected', x===selected)); }});
+          selectedNode = n;
+          dragNode = { el, data: n, off: {x: (e.clientX - vp.x)/vp.scale - n.x, y: (e.clientY - vp.y)/vp.scale - n.y} };
+          dragNode.el.classList.add('selected');
+        };
+        el.ondblclick = () => { const t = prompt('Edytuj:', n.text); if(t!==null) { n.text=t; Store.save(); renderNodes(); }};
+        el.onmouseenter = () => showHoverMenu(n, el);
+        el.onmouseleave = () => setTimeout(()=>{ if(!hoverMenu.matches(':hover')) hideHoverMenu(); }, 200);
       });
-      drawLines();
     }
 
     function drawLines() {
-      mmSvg.innerHTML = '';
+      svg.innerHTML = '';
       links.forEach(l => {
         const a = nodes.find(n=>n.id===l.from), b = nodes.find(n=>n.id===l.to);
         if(!a||!b) return;
         const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-        line.setAttribute('x1', a.x+55); line.setAttribute('y1', a.y+18);
-        line.setAttribute('x2', b.x+55); line.setAttribute('y2', b.y+18);
-        mmSvg.appendChild(line);
+        line.setAttribute('x1', a.x+50); line.setAttribute('y1', a.y+16);
+        line.setAttribute('x2', b.x+50); line.setAttribute('y2', b.y+16);
+        svg.appendChild(line);
       });
     }
 
-    function addNode() {
-      const rect = mmCont.getBoundingClientRect();
-      nodes.push({id: Date.now(), x: 150+Math.random()*300, y: 150+Math.random()*200, text:'Nowy', color:''});
-      Store.save(); renderMM();
-    }
-    function addLink(from, to) { if(!links.find(l=>(l.from===from&&l.to===to)||(l.from===to&&l.to===from))) { links.push({from,to}); Store.save(); renderMM(); }}
+    // Hover Menu
+    const paletteColors = ['#0b1120','#1e293b','#334155','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#6366f1','#a855f7','#ec4899'];
+    document.getElementById('palette-grid').innerHTML = paletteColors.map(c => `<div class="color-dot" style="background:${c}"></div>`).join('');
+    document.querySelectorAll('#palette-grid .color-dot').forEach(dot => dot.onclick = () => { selectedNode.color = dot.style.backgroundColor; Store.save(); renderNodes(); hideHoverMenu(); });
+    document.getElementById('del-links-btn').onclick = () => { if(!selectedNode) return; links = links.filter(l => l.from !== selectedNode.id && l.to !== selectedNode.id); Store.save(); renderNodes(); drawLines(); hideHoverMenu(); };
 
-    document.getElementById('mm-add').onclick = addNode;
-    document.getElementById('mm-link').onclick = () => { linking=!linking; selected=null; document.getElementById('mm-link').classList.toggle('active',linking); };
-    document.getElementById('mm-color').onclick = () => { if(!selected) return; const c = prompt('Kolor tła (hex/nazwa):', selected.bg||''); if(c!==null) { const n = nodes.find(x=>x.id===selected.dataset.id); n.color = c; Store.save(); renderMM(); }};
-    document.getElementById('mm-flashcard').onclick = () => { flashMode=!flashMode; document.getElementById('mm-flashcard').classList.toggle('active',flashMode); renderMM(); };
+    function showHoverMenu(node, el) {
+      selectedNode = node;
+      const rect = el.getBoundingClientRect();
+      hoverMenu.style.left = (rect.left + window.scrollX) + 'px';
+      hoverMenu.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+      hoverMenu.classList.add('visible');
+    }
+    function hideHoverMenu() { hoverMenu.classList.remove('visible'); }
+    hoverMenu.onmouseleave = hideHoverMenu;
+
+    document.getElementById('mm-add').onclick = () => {
+      const id = Date.now();
+      nodes.push({id, x: (-vp.x + innerWidth/2 - vp.x*0.5)/vp.scale + (Math.random()*100-50), y: (-vp.y + innerHeight/2 - vp.y*0.5)/vp.scale + (Math.random()*100-50), text:'Nowy', color:''});
+      Store.save(); renderNodes(); drawLines();
+    };
+    document.getElementById('mm-flashcard').onclick = () => { flashMode=!flashMode; document.getElementById('mm-flashcard').classList.toggle('active',flashMode); renderNodes(); };
 
     // Export/Import
     document.getElementById('mm-exp-json').onclick = () => { const b=new Blob([JSON.stringify({nodes,links},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='mapa.json'; a.click(); };
-    document.getElementById('mm-imp-json').onclick = () => { const i=document.createElement('input'); i.type='file'; i.accept='.json'; i.onchange=e=>{ const f=e.target.files[0]; const r=new FileReader(); r.onload=()=>{ const d=JSON.parse(r.result); nodes=d.nodes||[]; links=d.links||[]; Store.save(); renderMM(); }; r.readAsText(f); }; i.click(); };
-    document.getElementById('mm-exp-png').onclick = async () => { const c = await html2canvas(mmCont, {backgroundColor:'#0b1120', scale:2}); const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='mapa.png'; a.click(); };
+    document.getElementById('mm-imp-json').onclick = () => { const i=document.createElement('input'); i.type='file'; i.accept='.json'; i.onchange=e=>{ const f=e.target.files[0]; const r=new FileReader(); r.onload=()=>{ const d=JSON.parse(r.result); nodes=d.nodes||[]; links=d.links||[]; Store.save(); renderNodes(); drawLines(); }; r.readAsText(f); }; i.click(); };
+    document.getElementById('mm-exp-png').onclick = async () => {
+      const orig = {x:vp.x, y:vp.y, s:vp.scale};
+      vp.x=0; vp.y=0; vp.scale=1; updateTransform();
+      setTimeout(async () => {
+        const c = await html2canvas(viewport, {backgroundColor:'#0b1120', scale:2});
+        const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='mapa.png'; a.click();
+        vp=orig; updateTransform();
+      }, 300);
+    };
 
     // === 5. SETTINGS & ROUTER ===
     const applyTheme = () => {
-      const p = document.getElementById('set-primary').value, s = document.getElementById('set-secondary').value;
-      const fm = document.getElementById('set-font-main').value, sp = parseFloat(document.getElementById('set-vis-speed').value);
+      const p=document.getElementById('set-primary').value, s=document.getElementById('set-secondary').value;
+      const fm=document.getElementById('set-font-main').value, sp=parseFloat(document.getElementById('set-vis-speed').value);
       document.documentElement.style.setProperty('--primary',p); document.documentElement.style.setProperty('--secondary',s);
-      document.documentElement.style.setProperty('--font-main',fm); speed = sp;
+      document.documentElement.style.setProperty('--font-main',fm); speed=sp;
       Store.state.settings = {primary:p, secondary:s, fontMain:fm, speed:sp}; Store.save();
     };
     ['set-primary','set-secondary','set-font-main','set-vis-speed'].forEach(id => document.getElementById(id).oninput = applyTheme);
     document.getElementById('set-reset').onclick = () => { if(confirm('Usunąć wszystkie dane?')) { localStorage.removeItem(Store.key); location.reload(); }};
 
-    // Router
-    const dockBtns = document.querySelectorAll('.dock-btn');
+    const dockBtns = document.querySelectorAll('.dock-btn[data-view]');
     const views = document.querySelectorAll('.view');
     window.addEventListener('hashchange', () => {
       const h = location.hash.slice(1)||'mindmap';
@@ -343,7 +413,6 @@
     window.addEventListener('resize', ()=>{cvs.width=innerWidth; cvs.height=innerHeight;});
     cvs.width=innerWidth; cvs.height=innerHeight; drawBg();
 
-    // Load theme
     if(Store.state.settings) {
       document.getElementById('set-primary').value = Store.state.settings.primary;
       document.getElementById('set-secondary').value = Store.state.settings.secondary;
@@ -351,7 +420,7 @@
       document.getElementById('set-vis-speed').value = Store.state.settings.speed;
       applyTheme();
     }
-    renderMM();
+    renderNodes(); drawLines();
   </script>
 </body>
 </html>
