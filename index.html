@@ -6,12 +6,11 @@
 <title>StudyOS</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
   --primary: #7c3aed;
   --secondary: #06b6d4;
-  --accent: #f59e0b;
   --bg: #0a0a0f;
   --surface: rgba(255,255,255,0.04);
   --surface-hover: rgba(255,255,255,0.08);
@@ -28,407 +27,326 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html, body {
-  width: 100%; height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-main);
-  overflow: hidden;
-  user-select: none;
-}
+html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:var(--font-main); overflow:hidden; user-select:none; }
 
 /* ── CANVAS BG ── */
-#bg-canvas {
-  position: fixed; inset: 0; z-index: 0;
-  pointer-events: none;
-}
+#bg-canvas { position:fixed; inset:0; z-index:0; pointer-events:none; }
 
-/* ── VIEWS ── */
-#app { position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column; }
+/* ── APP ── */
+#app { position:fixed; inset:0; z-index:1; display:flex; flex-direction:column; }
+.view { flex:1; display:none; flex-direction:column; opacity:0; transform:translateY(12px); transition:opacity .3s ease, transform .3s ease; overflow:hidden; }
+.view.active { display:flex; }
+.view.visible { opacity:1; transform:translateY(0); }
 
-.view {
-  flex: 1; display: none; flex-direction: column;
-  opacity: 0; transform: translateY(12px);
-  transition: opacity .3s ease, transform .3s ease;
-  overflow: hidden;
-}
-.view.active { display: flex; }
-.view.visible { opacity: 1; transform: translateY(0); }
-
-/* ── MINDMAP VIEW ── */
-#view-mindmap { position: relative; }
-
+/* ── MINDMAP ── */
+#view-mindmap { position:relative; }
 #mm-toolbar {
-  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
-  z-index: 50;
-  display: flex; gap: 8px;
-  background: rgba(10,10,15,0.8);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  border-radius: 40px;
-  padding: 8px 14px;
-  box-shadow: var(--shadow);
+  position:absolute; top:16px; left:50%; transform:translateX(-50%); z-index:50;
+  display:flex; gap:6px; background:rgba(10,10,15,0.85); backdrop-filter:blur(16px);
+  border:1px solid var(--glass-border); border-radius:40px; padding:7px 12px; box-shadow:var(--shadow);
 }
-
 #mm-toolbar button {
-  background: none; border: none; color: var(--text-muted);
-  font-size: 13px; font-family: var(--font-main);
-  padding: 5px 12px; border-radius: 20px; cursor: pointer;
-  transition: all .2s; white-space: nowrap;
+  background:none; border:none; color:var(--text-muted); font-size:12px; font-family:var(--font-main);
+  padding:5px 11px; border-radius:20px; cursor:pointer; transition:all .2s; white-space:nowrap;
 }
-#mm-toolbar button:hover { background: var(--surface-hover); color: var(--text); }
-#mm-toolbar button.active { background: var(--primary); color: #fff; }
+#mm-toolbar button:hover { background:var(--surface-hover); color:var(--text); }
+#mm-toolbar button.active { background:var(--primary); color:#fff; }
 
-#mm-viewport {
-  position: absolute; inset: 0;
-  overflow: hidden; cursor: grab;
-}
-#mm-viewport.grabbing { cursor: grabbing; }
-
-#mm-world {
-  position: absolute; top: 0; left: 0;
-  width: 4000px; height: 4000px;
-  transform-origin: 0 0;
-}
-
-svg#mm-links {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  pointer-events: none; overflow: visible;
-}
-
-svg#mm-links line {
-  stroke: var(--primary);
-  stroke-width: 2;
-  stroke-opacity: 0.5;
-  stroke-dasharray: 5 3;
-}
+#mm-viewport { position:absolute; inset:0; overflow:hidden; cursor:grab; }
+#mm-viewport.grabbing { cursor:grabbing; }
+#mm-world { position:absolute; top:0; left:0; width:4000px; height:4000px; transform-origin:0 0; }
+svg#mm-links { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+svg#mm-links line { stroke:var(--primary); stroke-width:2; stroke-opacity:0.45; stroke-dasharray:5 3; }
 
 .mm-node {
-  position: absolute;
-  min-width: 110px; max-width: 220px;
-  padding: 10px 16px;
-  border-radius: var(--radius);
-  border: 1.5px solid var(--glass-border);
-  background: rgba(20,20,30,0.88);
-  backdrop-filter: blur(10px);
-  color: var(--text);
-  font-size: 13px; font-weight: 500;
-  cursor: grab;
-  text-align: center;
-  word-break: break-word;
-  transition: border-color .2s, box-shadow .2s, filter .3s;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-  z-index: 10;
+  position:absolute; min-width:120px; max-width:240px;
+  border-radius:var(--radius); border:1.5px solid var(--glass-border);
+  background:rgba(20,20,30,0.9); backdrop-filter:blur(10px);
+  color:var(--text); cursor:grab;
+  transition:border-color .2s, box-shadow .2s, filter .3s;
+  box-shadow:0 4px 16px rgba(0,0,0,0.3); z-index:10; overflow:hidden;
 }
-.mm-node:hover { border-color: var(--primary); z-index: 20; }
-.mm-node.drag-over { border-color: var(--secondary); box-shadow: 0 0 0 2px var(--secondary); }
-.mm-node.flashcard-blur { filter: blur(6px); }
+.mm-node:hover { border-color:var(--primary); z-index:20; }
+.mm-node.drag-over { border-color:var(--secondary); box-shadow:0 0 0 2px var(--secondary); }
+.mm-node.flashcard-blur { filter:blur(6px); }
+.mm-node-title { padding:9px 14px 5px; font-size:13px; font-weight:600; line-height:1.3; }
+.mm-node-desc { padding:0 14px 9px; font-size:11px; color:var(--text-muted); line-height:1.4; }
+.mm-node-desc:empty { display:none; }
 
-/* ── NODE HOVER MENU ── */
-#node-hover-menu {
-  position: fixed;
-  z-index: 9999;
-  background: rgba(12,12,18,0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  padding: 12px;
-  box-shadow: var(--shadow-lg);
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 200px;
+/* ── NODE CONTEXT MENU (fixed, stays on hover) ── */
+#node-ctx {
+  position:fixed; z-index:9999;
+  background:rgba(10,10,18,0.97); backdrop-filter:blur(24px);
+  border:1px solid var(--glass-border); border-radius:var(--radius);
+  padding:12px; box-shadow:var(--shadow-lg);
+  display:none; flex-direction:column; gap:8px; min-width:210px;
 }
-#node-hover-menu.visible { display: flex; }
-
-.color-grid {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;
-}
+#node-ctx.show { display:flex; }
+.color-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:5px; }
 .color-swatch {
-  width: 28px; height: 28px; border-radius: 6px;
-  border: 1.5px solid transparent; cursor: pointer;
-  transition: transform .15s, border-color .15s;
+  width:26px; height:26px; border-radius:6px; border:1.5px solid transparent;
+  cursor:pointer; transition:transform .15s, border-color .15s;
 }
-.color-swatch:hover { transform: scale(1.15); border-color: #fff; }
+.color-swatch:hover { transform:scale(1.2); border-color:#fff; }
+.ctx-sep { height:1px; background:var(--glass-border); }
+.ctx-btn {
+  background:var(--surface); border:1px solid var(--glass-border); color:var(--text);
+  font-family:var(--font-main); font-size:12px; padding:7px 10px; border-radius:var(--radius-sm);
+  cursor:pointer; transition:all .2s; text-align:left;
+}
+.ctx-btn:hover { background:var(--surface-hover); }
+.ctx-btn.danger { background:rgba(255,80,80,0.08); border-color:rgba(255,80,80,0.2); color:#ff6060; }
+.ctx-btn.danger:hover { background:rgba(255,80,80,0.18); }
 
-.menu-btn {
-  background: rgba(255,80,80,0.1);
-  border: 1px solid rgba(255,80,80,0.2);
-  color: #ff6060; font-family: var(--font-main);
-  font-size: 12px; padding: 6px 10px;
-  border-radius: var(--radius-sm); cursor: pointer;
-  transition: background .2s;
+/* ── INLINE EDITOR MODAL ── */
+#inline-modal {
+  position:fixed; inset:0; z-index:10000; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
 }
-.menu-btn:hover { background: rgba(255,80,80,0.2); }
+#inline-modal.show { display:flex; }
+#inline-modal-box {
+  background:rgba(14,14,22,0.98); border:1px solid var(--glass-border);
+  border-radius:var(--radius); padding:24px; box-shadow:var(--shadow-lg);
+  width:360px; display:flex; flex-direction:column; gap:14px;
+}
+#inline-modal-box h3 { font-size:14px; font-weight:600; color:var(--text-muted); }
+.modal-input {
+  background:var(--surface); border:1px solid var(--glass-border); border-radius:var(--radius-sm);
+  color:var(--text); font-family:var(--font-main); font-size:14px; padding:10px 12px; width:100%;
+  outline:none; transition:border-color .2s;
+}
+.modal-input:focus { border-color:var(--primary); }
+.modal-textarea { min-height:80px; resize:vertical; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; }
+.modal-btn {
+  padding:8px 18px; border-radius:var(--radius-sm); border:1px solid var(--glass-border);
+  background:var(--surface); color:var(--text); font-family:var(--font-main);
+  font-size:13px; font-weight:500; cursor:pointer; transition:all .2s;
+}
+.modal-btn.primary { background:var(--primary); border-color:var(--primary); color:#fff; }
+.modal-btn:hover { background:var(--surface-hover); }
+.modal-btn.primary:hover { filter:brightness(1.1); }
+
+/* ── COLOR PICKER MODAL ── */
+#color-picker-modal {
+  position:fixed; inset:0; z-index:10000; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
+}
+#color-picker-modal.show { display:flex; }
+#color-picker-box {
+  background:rgba(14,14,22,0.98); border:1px solid var(--glass-border);
+  border-radius:var(--radius); padding:24px; box-shadow:var(--shadow-lg);
+  width:320px; display:flex; flex-direction:column; gap:16px;
+}
+#color-picker-box h3 { font-size:14px; font-weight:600; color:var(--text-muted); }
+.cp-palette { display:grid; grid-template-columns:repeat(8,1fr); gap:8px; }
+.cp-swatch {
+  width:100%; aspect-ratio:1; border-radius:8px; border:2px solid transparent;
+  cursor:pointer; transition:transform .15s, border-color .15s;
+}
+.cp-swatch:hover { transform:scale(1.12); border-color:rgba(255,255,255,0.5); }
+.cp-swatch.selected { border-color:#fff; transform:scale(1.08); }
+.cp-custom { display:flex; align-items:center; gap:10px; }
+.cp-custom label { font-size:12px; color:var(--text-muted); }
+.cp-custom input[type="color"] {
+  width:36px; height:30px; border:1px solid var(--glass-border); border-radius:6px;
+  background:none; cursor:pointer; padding:2px;
+}
+.cp-preview {
+  height:36px; border-radius:var(--radius-sm); border:1px solid var(--glass-border);
+  transition:background .2s;
+}
 
 /* ── SETTINGS VIEW ── */
-#view-settings {
-  padding: 60px 40px 100px;
-  overflow-y: auto;
-  align-items: center;
-}
-
+#view-settings { padding:60px 40px 100px; overflow-y:auto; align-items:center; }
 .settings-card {
-  width: 100%; max-width: 560px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  padding: 28px 32px;
-  margin-bottom: 20px;
+  width:100%; max-width:580px; background:var(--glass); border:1px solid var(--glass-border);
+  border-radius:var(--radius); padding:28px 32px; margin-bottom:20px;
 }
-.settings-card h2 {
-  font-size: 15px; font-weight: 600;
-  color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase;
-  margin-bottom: 20px;
-}
+.settings-card h2 { font-size:13px; font-weight:600; color:var(--text-muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:20px; }
+.setting-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04); gap:16px; }
+.setting-row:last-child { border-bottom:none; }
+.setting-row label { font-size:14px; color:var(--text); flex:1; }
+.setting-row select, .setting-row input[type="range"] { background:var(--surface); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text); font-family:var(--font-main); padding:6px 10px; font-size:13px; cursor:pointer; }
+.setting-row input[type="range"] { padding:0; width:120px; accent-color:var(--primary); }
 
-.setting-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  gap: 16px;
+.color-btn {
+  display:flex; align-items:center; gap:8px; padding:6px 12px;
+  background:var(--surface); border:1px solid var(--glass-border);
+  border-radius:var(--radius-sm); cursor:pointer; transition:all .2s;
+  font-family:var(--font-main); font-size:13px; color:var(--text);
 }
-.setting-row:last-child { border-bottom: none; }
-.setting-row label { font-size: 14px; color: var(--text); flex: 1; }
+.color-btn:hover { background:var(--surface-hover); }
+.color-btn-swatch { width:18px; height:18px; border-radius:4px; }
 
-.setting-row input[type="color"] {
-  width: 40px; height: 32px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  background: none; cursor: pointer; padding: 2px;
-}
-.setting-row select, .setting-row input[type="range"] {
-  background: var(--surface);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  color: var(--text); font-family: var(--font-main);
-  padding: 6px 10px; font-size: 13px; cursor: pointer;
-}
-.setting-row input[type="range"] { padding: 0; width: 120px; accent-color: var(--primary); }
-
-.btn-danger {
-  background: rgba(239,68,68,0.12);
-  border: 1px solid rgba(239,68,68,0.25);
-  color: #f87171; font-family: var(--font-main);
-  font-size: 13px; font-weight: 500;
-  padding: 10px 20px; border-radius: var(--radius-sm);
-  cursor: pointer; transition: all .2s; margin-top: 8px;
-}
-.btn-danger:hover { background: rgba(239,68,68,0.22); }
+.btn-danger { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.25); color:#f87171; font-family:var(--font-main); font-size:13px; font-weight:500; padding:10px 20px; border-radius:var(--radius-sm); cursor:pointer; transition:all .2s; margin-top:8px; }
+.btn-danger:hover { background:rgba(239,68,68,0.22); }
 
 /* ── DOCK ── */
 #dock {
-  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  z-index: 200;
-  display: flex; gap: 6px;
-  background: rgba(10,10,15,0.85);
-  backdrop-filter: blur(24px);
-  border: 1px solid var(--glass-border);
-  border-radius: 50px;
-  padding: 8px 10px;
-  box-shadow: var(--shadow-lg);
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:200;
+  display:flex; gap:6px; background:rgba(10,10,15,0.88); backdrop-filter:blur(24px);
+  border:1px solid var(--glass-border); border-radius:50px; padding:8px 10px; box-shadow:var(--shadow-lg);
 }
-
-.dock-btn {
-  width: 46px; height: 46px;
-  border: none; border-radius: 50%;
-  background: none; cursor: pointer;
-  font-size: 20px;
-  display: flex; align-items: center; justify-content: center;
-  transition: background .2s, transform .15s;
-  position: relative;
-}
-.dock-btn:hover { background: var(--surface-hover); transform: scale(1.1); }
-.dock-btn.active { background: var(--primary); }
+.dock-btn { width:46px; height:46px; border:none; border-radius:50%; background:none; cursor:pointer; font-size:20px; display:flex; align-items:center; justify-content:center; transition:background .2s, transform .15s; }
+.dock-btn:hover { background:var(--surface-hover); transform:scale(1.1); }
+.dock-btn.active { background:var(--primary); }
 
 /* ── TOOLS DRAWER ── */
 #tools-drawer {
-  position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%) translateY(12px);
-  z-index: 190;
-  display: flex; gap: 8px;
-  background: rgba(10,10,15,0.85);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: 40px;
-  padding: 8px 12px;
-  box-shadow: var(--shadow);
-  opacity: 0; pointer-events: none;
-  transition: opacity .25s, transform .25s;
+  position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(12px); z-index:190;
+  display:flex; gap:6px; background:rgba(10,10,15,0.88); backdrop-filter:blur(20px);
+  border:1px solid var(--glass-border); border-radius:40px; padding:7px 10px; box-shadow:var(--shadow);
+  opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
 }
-#tools-drawer.open { opacity: 1; pointer-events: all; transform: translateX(-50%) translateY(0); }
+#tools-drawer.open { opacity:1; pointer-events:all; transform:translateX(-50%) translateY(0); }
+.tool-btn { background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:12px; font-family:var(--font-main); font-weight:500; padding:6px 12px; border-radius:20px; transition:all .2s; white-space:nowrap; }
+.tool-btn:hover { background:var(--surface-hover); color:var(--text); }
+.tool-btn.active { background:var(--primary); color:#fff; }
 
-.tool-btn {
-  background: none; border: none; cursor: pointer;
-  color: var(--text-muted); font-size: 13px;
-  font-family: var(--font-main); font-weight: 500;
-  padding: 6px 14px; border-radius: 20px;
-  transition: all .2s; white-space: nowrap;
-  display: flex; align-items: center; gap: 6px;
-}
-.tool-btn:hover { background: var(--surface-hover); color: var(--text); }
-.tool-btn.active { background: var(--primary); color: #fff; }
-
-/* ── FLOATING WINDOWS ── */
-.float-win {
-  position: fixed;
-  background: rgba(10,10,18,0.9);
-  backdrop-filter: blur(24px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  display: none;
-  flex-direction: column;
-  z-index: 300;
-  min-width: 260px;
-  overflow: hidden;
-}
-.float-win.visible { display: flex; }
-
-.win-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(255,255,255,0.03);
-  border-bottom: 1px solid var(--glass-border);
-  cursor: move;
-  gap: 8px;
-}
-.win-header span { font-size: 13px; font-weight: 600; flex: 1; }
-.win-close {
-  background: none; border: none; color: var(--text-muted);
-  font-size: 16px; cursor: pointer; line-height: 1;
-  transition: color .2s; padding: 2px 6px; border-radius: 4px;
-}
-.win-close:hover { color: #ff6060; background: rgba(255,96,96,0.1); }
-
-.win-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+/* ── FLOAT WINDOWS ── */
+.float-win { position:fixed; background:rgba(10,10,18,0.92); backdrop-filter:blur(24px); border:1px solid var(--glass-border); border-radius:var(--radius); box-shadow:var(--shadow-lg); display:none; flex-direction:column; z-index:300; overflow:hidden; }
+.float-win.visible { display:flex; }
+.win-header { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--glass-border); cursor:move; gap:8px; }
+.win-header span { font-size:13px; font-weight:600; flex:1; }
+.win-close { background:none; border:none; color:var(--text-muted); font-size:15px; cursor:pointer; line-height:1; transition:color .2s; padding:2px 6px; border-radius:4px; }
+.win-close:hover { color:#ff6060; background:rgba(255,96,96,0.1); }
+.win-body { padding:14px; display:flex; flex-direction:column; gap:11px; }
 
 /* ── POMODORO ── */
-#win-pomodoro { width: 260px; }
-.pomo-display {
-  text-align: center; padding: 20px 0 8px;
-}
-.pomo-time {
-  font-size: 48px; font-weight: 700; letter-spacing: -2px;
-  font-variant-numeric: tabular-nums;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-}
-.pomo-phase { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-.pomo-cycle { font-size: 11px; color: var(--text-muted); }
-.pomo-controls { display: flex; gap: 8px; }
-.pomo-btn {
-  flex: 1; padding: 8px; border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
-  background: var(--surface); color: var(--text);
-  font-family: var(--font-main); font-size: 12px; font-weight: 500;
-  cursor: pointer; transition: all .2s;
-}
-.pomo-btn:hover { background: var(--primary); border-color: var(--primary); }
-.pomo-settings { display: flex; gap: 8px; }
-.pomo-input-group { flex: 1; }
-.pomo-input-group label { font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px; }
-.pomo-input-group input {
-  width: 100%; background: var(--surface);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm); color: var(--text);
-  font-family: var(--font-main); font-size: 13px;
-  padding: 6px 8px; text-align: center;
-}
+#win-pomodoro { width:262px; }
+.pomo-display { text-align:center; padding:16px 0 6px; }
+.pomo-time { font-size:50px; font-weight:700; letter-spacing:-2px; font-variant-numeric:tabular-nums; background:linear-gradient(135deg,var(--primary),var(--secondary)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.pomo-phase { font-size:12px; color:var(--text-muted); margin-top:4px; }
+.pomo-cycle { font-size:11px; color:var(--text-muted); margin-top:2px; }
+.pomo-controls { display:flex; gap:6px; }
+.pomo-btn { flex:1; padding:8px; border-radius:var(--radius-sm); border:1px solid var(--glass-border); background:var(--surface); color:var(--text); font-family:var(--font-main); font-size:12px; font-weight:500; cursor:pointer; transition:all .2s; }
+.pomo-btn:hover { background:var(--primary); border-color:var(--primary); }
+.pomo-settings { display:flex; gap:8px; }
+.pomo-ig { flex:1; }
+.pomo-ig label { font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px; }
+.pomo-ig input { width:100%; background:var(--surface); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text); font-family:var(--font-main); font-size:13px; padding:6px 8px; text-align:center; outline:none; }
+.pomo-ig input:focus { border-color:var(--primary); }
 
 /* ── RADIO ── */
-#win-radio { width: 300px; }
-.radio-url {
-  display: flex; gap: 6px;
+#win-radio { width:300px; }
+.radio-stations { display:flex; flex-direction:column; gap:5px; max-height:140px; overflow-y:auto; }
+.radio-station-item {
+  display:flex; align-items:center; gap:6px; padding:7px 10px;
+  background:var(--surface); border-radius:var(--radius-sm); border:1px solid transparent;
+  cursor:pointer; transition:all .2s;
 }
-.radio-url input {
-  flex: 1; background: var(--surface);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm); color: var(--text);
-  font-family: var(--font-main); font-size: 12px; padding: 8px 10px;
+.radio-station-item:hover { background:var(--surface-hover); border-color:var(--glass-border); }
+.radio-station-item.playing { border-color:var(--primary); background:rgba(124,58,237,0.1); }
+.radio-station-name { flex:1; font-size:13px; font-weight:500; }
+.radio-station-del { background:none; border:none; color:var(--text-muted); font-size:13px; cursor:pointer; padding:2px 5px; border-radius:3px; transition:color .2s; }
+.radio-station-del:hover { color:#ff6060; }
+.radio-add-row { display:flex; flex-direction:column; gap:5px; }
+.radio-add-row input { background:var(--surface); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text); font-family:var(--font-main); font-size:12px; padding:7px 9px; outline:none; }
+.radio-add-row input:focus { border-color:var(--primary); }
+.radio-add-row input::placeholder { color:var(--text-muted); }
+.radio-add-btn { padding:7px; border-radius:var(--radius-sm); border:1px solid var(--primary); background:rgba(124,58,237,0.12); color:var(--primary); font-family:var(--font-main); font-size:12px; cursor:pointer; transition:all .2s; }
+.radio-add-btn:hover { background:var(--primary); color:#fff; }
+.radio-controls { display:flex; align-items:center; gap:8px; }
+.radio-play-btn { padding:7px 14px; border-radius:var(--radius-sm); border:1px solid var(--primary); background:rgba(124,58,237,0.12); color:var(--primary); font-family:var(--font-main); font-size:13px; cursor:pointer; transition:all .2s; }
+.radio-play-btn:hover { background:var(--primary); color:#fff; }
+.radio-status { font-size:11px; color:var(--text-muted); min-height:14px; }
+.radio-vol { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text-muted); }
+.radio-vol input { flex:1; accent-color:var(--secondary); }
+
+/* ── GRAMOPHONE ── */
+.radio-gram { display:flex; justify-content:center; align-items:center; padding:6px 0 2px; }
+.gram-wrap { position:relative; width:70px; height:70px; }
+.gram-disc {
+  width:70px; height:70px; border-radius:50%;
+  background:conic-gradient(from 0deg, #1a1a2e 0%, #2d1b69 25%, #1a1a2e 50%, #2d1b69 75%, #1a1a2e 100%);
+  border:3px solid rgba(255,255,255,0.08);
+  display:flex; align-items:center; justify-content:center;
+  transition:animation .3s;
 }
-.radio-url input::placeholder { color: var(--text-muted); }
-.radio-play {
-  padding: 8px 14px; border-radius: var(--radius-sm);
-  border: 1px solid var(--primary); background: rgba(124,58,237,0.15);
-  color: var(--primary); font-family: var(--font-main); font-size: 13px;
-  cursor: pointer; transition: all .2s; white-space: nowrap;
+.gram-disc.spinning { animation:spin 2s linear infinite; }
+.gram-center { width:14px; height:14px; border-radius:50%; background:var(--primary); box-shadow:0 0 8px var(--primary); }
+.gram-arm {
+  position:absolute; top:6px; right:-12px;
+  width:36px; height:4px; background:rgba(255,255,255,0.3);
+  border-radius:2px; transform-origin:right center;
+  transform:rotate(-30deg); transition:transform .5s ease;
 }
-.radio-play:hover { background: var(--primary); color: #fff; }
-.radio-status { font-size: 11px; color: var(--text-muted); min-height: 14px; }
-.radio-vol { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
-.radio-vol input { flex: 1; accent-color: var(--secondary); }
+.gram-arm.playing { transform:rotate(-18deg); }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 
 /* ── NOTEPAD ── */
-#win-notepad { width: 320px; }
-#notepad-area {
-  width: 100%; height: 220px; resize: none;
-  background: var(--surface);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  color: var(--text); font-family: 'JetBrains Mono', monospace;
-  font-size: 13px; line-height: 1.6; padding: 10px 12px;
-  outline: none;
-}
-#notepad-area:focus { border-color: var(--primary); }
+#win-notepad { width:320px; }
+#notepad-area { width:100%; height:200px; resize:none; background:var(--surface); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.6; padding:10px 12px; outline:none; }
+#notepad-area:focus { border-color:var(--primary); }
 
 /* ── CHECKLIST ── */
-#win-checklist { width: 300px; }
-.check-add { display: flex; gap: 6px; }
-.check-add input {
-  flex: 1; background: var(--surface);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm); color: var(--text);
-  font-family: var(--font-main); font-size: 13px; padding: 7px 10px;
+#win-checklist { width:300px; }
+.check-add { display:flex; gap:6px; }
+.check-add input { flex:1; background:var(--surface); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text); font-family:var(--font-main); font-size:13px; padding:7px 10px; outline:none; }
+.check-add input:focus { border-color:var(--primary); }
+.check-add input::placeholder { color:var(--text-muted); }
+.check-add button { padding:7px 12px; border-radius:var(--radius-sm); border:1px solid var(--primary); background:rgba(124,58,237,0.12); color:var(--primary); font-size:16px; cursor:pointer; transition:all .2s; }
+.check-add button:hover { background:var(--primary); color:#fff; }
+.check-list { display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto; }
+.check-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:var(--radius-sm); background:var(--surface); transition:background .15s; }
+.check-item:hover { background:var(--surface-hover); }
+.check-item input[type="checkbox"] { accent-color:var(--primary); cursor:pointer; }
+.check-item span { flex:1; font-size:13px; transition:all .2s; }
+.check-item.done span { text-decoration:line-through; color:var(--text-muted); }
+.check-del { background:none; border:none; color:var(--text-muted); font-size:14px; cursor:pointer; padding:2px 4px; border-radius:3px; transition:color .2s; }
+.check-del:hover { color:#ff6060; }
+
+/* ── FLASHCARD TOOL ── */
+#win-flashcards { width:340px; }
+.fc-header-row { display:flex; gap:6px; align-items:center; }
+.fc-deck-name { flex:1; background:var(--surface); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text); font-family:var(--font-main); font-size:13px; padding:7px 10px; outline:none; }
+.fc-deck-name:focus { border-color:var(--primary); }
+.fc-small-btn { padding:7px 10px; border-radius:var(--radius-sm); border:1px solid var(--glass-border); background:var(--surface); color:var(--text); font-family:var(--font-main); font-size:12px; cursor:pointer; transition:all .2s; white-space:nowrap; }
+.fc-small-btn:hover { background:var(--surface-hover); }
+.fc-small-btn.accent { border-color:var(--primary); color:var(--primary); background:rgba(124,58,237,0.08); }
+.fc-small-btn.accent:hover { background:var(--primary); color:#fff; }
+.fc-card-area { position:relative; height:160px; perspective:800px; cursor:pointer; }
+.fc-card {
+  position:absolute; inset:0; transform-style:preserve-3d;
+  transition:transform .5s ease; border-radius:var(--radius);
+  border:1px solid var(--glass-border);
 }
-.check-add input::placeholder { color: var(--text-muted); }
-.check-add button {
-  padding: 7px 12px; border-radius: var(--radius-sm);
-  border: 1px solid var(--primary); background: rgba(124,58,237,0.15);
-  color: var(--primary); font-size: 16px; cursor: pointer; transition: all .2s;
+.fc-card.flipped { transform:rotateY(180deg); }
+.fc-face {
+  position:absolute; inset:0; backface-visibility:hidden; border-radius:var(--radius);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:20px; text-align:center;
 }
-.check-add button:hover { background: var(--primary); color: #fff; }
-.check-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
-.check-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 8px; border-radius: var(--radius-sm);
-  background: var(--surface);
-  transition: background .15s;
-}
-.check-item:hover { background: var(--surface-hover); }
-.check-item input[type="checkbox"] { accent-color: var(--primary); cursor: pointer; }
-.check-item span { flex: 1; font-size: 13px; transition: all .2s; }
-.check-item.done span { text-decoration: line-through; color: var(--text-muted); }
-.check-item .del-btn {
-  background: none; border: none; color: var(--text-muted);
-  font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 3px;
-  transition: color .2s;
-}
-.check-item .del-btn:hover { color: #ff6060; }
+.fc-front { background:rgba(124,58,237,0.1); }
+.fc-back { background:rgba(6,182,212,0.08); transform:rotateY(180deg); }
+.fc-face-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); margin-bottom:8px; }
+.fc-face-text { font-size:15px; font-weight:500; line-height:1.4; }
+.fc-nav { display:flex; align-items:center; justify-content:space-between; }
+.fc-counter { font-size:12px; color:var(--text-muted); }
+.fc-nav-btns { display:flex; gap:6px; }
+.fc-add-row { display:flex; flex-direction:column; gap:5px; }
+.fc-add-row input, .fc-add-row textarea { background:var(--surface); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text); font-family:var(--font-main); font-size:12px; padding:7px 9px; outline:none; width:100%; resize:none; }
+.fc-add-row input:focus, .fc-add-row textarea:focus { border-color:var(--primary); }
+.fc-add-row input::placeholder, .fc-add-row textarea::placeholder { color:var(--text-muted); }
+.fc-tabs { display:flex; gap:5px; }
+.fc-tab { flex:1; padding:5px; border-radius:var(--radius-sm); border:1px solid var(--glass-border); background:var(--surface); color:var(--text-muted); font-family:var(--font-main); font-size:11px; cursor:pointer; transition:all .2s; text-align:center; }
+.fc-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
 
 /* ── SCROLLBAR ── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.22); }
 
-/* ── ANIMATIONS ── */
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-.toast {
-  position: fixed; top: 20px; right: 20px; z-index: 9999;
-  background: rgba(20,20,30,0.95);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  padding: 10px 16px; font-size: 13px;
-  box-shadow: var(--shadow);
-  animation: fadeIn .3s ease;
-}
+/* ── TOAST ── */
+@keyframes toastIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.toast { position:fixed; top:20px; right:20px; z-index:99999; background:rgba(20,20,30,0.97); border:1px solid var(--glass-border); border-radius:var(--radius-sm); padding:10px 16px; font-size:13px; box-shadow:var(--shadow); animation:toastIn .3s ease; }
 </style>
 </head>
 <body>
-
 <canvas id="bg-canvas"></canvas>
 
 <div id="app">
@@ -442,11 +360,9 @@ svg#mm-links line {
       <button id="btn-export-png">📷 PNG</button>
     </div>
     <div id="mm-viewport">
-      <div id="mm-world">
-        <svg id="mm-links"></svg>
-      </div>
+      <div id="mm-world"><svg id="mm-links"></svg></div>
     </div>
-    <input type="file" id="import-file-input" accept=".json" style="display:none">
+    <input type="file" id="import-file" accept=".json" style="display:none">
   </div>
 
   <!-- SETTINGS VIEW -->
@@ -455,17 +371,27 @@ svg#mm-links line {
       <h2>🎨 Motyw</h2>
       <div class="setting-row">
         <label>Kolor główny</label>
-        <input type="color" id="set-primary" value="#7c3aed">
+        <button class="color-btn" id="open-cp-primary">
+          <div class="color-btn-swatch" id="swatch-primary"></div>
+          <span id="label-primary">#7c3aed</span>
+        </button>
       </div>
       <div class="setting-row">
         <label>Kolor akcentu</label>
-        <input type="color" id="set-secondary" value="#06b6d4">
+        <button class="color-btn" id="open-cp-secondary">
+          <div class="color-btn-swatch" id="swatch-secondary"></div>
+          <span id="label-secondary">#06b6d4</span>
+        </button>
       </div>
       <div class="setting-row">
         <label>Czcionka</label>
         <select id="set-font">
           <option value="'Space Grotesk', sans-serif">Space Grotesk</option>
+          <option value="'Syne', sans-serif">Syne</option>
+          <option value="'Outfit', sans-serif">Outfit</option>
+          <option value="'IBM Plex Sans', sans-serif">IBM Plex Sans</option>
           <option value="'DM Serif Display', serif">DM Serif Display</option>
+          <option value="'Playfair Display', serif">Playfair Display</option>
           <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
         </select>
       </div>
@@ -486,9 +412,9 @@ svg#mm-links line {
 
 <!-- DOCK -->
 <div id="dock">
-  <button class="dock-btn active" id="dock-mindmap" title="Mapa Myśli">🧠</button>
-  <button class="dock-btn" id="dock-tools" title="Narzędzia">🛠️</button>
-  <button class="dock-btn" id="dock-settings" title="Ustawienia">⚙️</button>
+  <button class="dock-btn active" id="dock-mindmap">🧠</button>
+  <button class="dock-btn" id="dock-tools">🛠️</button>
+  <button class="dock-btn" id="dock-settings">⚙️</button>
 </div>
 
 <!-- TOOLS DRAWER -->
@@ -497,14 +423,12 @@ svg#mm-links line {
   <button class="tool-btn" data-win="radio">📻 Radio</button>
   <button class="tool-btn" data-win="notepad">📝 Notatnik</button>
   <button class="tool-btn" data-win="checklist">✅ Checklista</button>
+  <button class="tool-btn" data-win="flashcards">🃏 Fiszki</button>
 </div>
 
-<!-- POMODORO WINDOW -->
+<!-- POMODORO -->
 <div class="float-win" id="win-pomodoro" data-win-id="pomodoro">
-  <div class="win-header">
-    <span>⏱ Pomodoro</span>
-    <button class="win-close" data-win="pomodoro">✕</button>
-  </div>
+  <div class="win-header"><span>⏱ Pomodoro</span><button class="win-close" data-win="pomodoro">✕</button></div>
   <div class="win-body">
     <div class="pomo-display">
       <div class="pomo-time" id="pomo-time">25:00</div>
@@ -517,55 +441,49 @@ svg#mm-links line {
       <button class="pomo-btn" id="pomo-reset">↺ Reset</button>
     </div>
     <div class="pomo-settings">
-      <div class="pomo-input-group">
-        <label>Praca (min)</label>
-        <input type="number" id="pomo-work-min" value="25" min="1" max="90">
-      </div>
-      <div class="pomo-input-group">
-        <label>Przerwa (min)</label>
-        <input type="number" id="pomo-break-min" value="5" min="1" max="30">
-      </div>
+      <div class="pomo-ig"><label>Praca (min)</label><input type="number" id="pomo-work-min" value="25" min="1" max="90"></div>
+      <div class="pomo-ig"><label>Przerwa (min)</label><input type="number" id="pomo-break-min" value="5" min="1" max="30"></div>
     </div>
   </div>
 </div>
 
-<!-- RADIO WINDOW -->
+<!-- RADIO -->
 <div class="float-win" id="win-radio" data-win-id="radio">
-  <div class="win-header">
-    <span>📻 Radio</span>
-    <button class="win-close" data-win="radio">✕</button>
-  </div>
+  <div class="win-header"><span>📻 Radio</span><button class="win-close" data-win="radio">✕</button></div>
   <div class="win-body">
-    <div class="radio-url">
-      <input type="text" id="radio-url-input" placeholder="URL streamu (mp3/aac)...">
-      <button class="radio-play" id="radio-play-btn">▶</button>
+    <div class="radio-gram">
+      <div class="gram-wrap">
+        <div class="gram-disc" id="gram-disc"><div class="gram-center"></div></div>
+        <div class="gram-arm" id="gram-arm"></div>
+      </div>
     </div>
-    <div class="radio-status" id="radio-status">Wstrzymane</div>
+    <div class="radio-stations" id="radio-stations"></div>
+    <div class="radio-controls">
+      <button class="radio-play-btn" id="radio-play-btn">▶ Graj</button>
+      <div class="radio-status" id="radio-status">Wstrzymane</div>
+    </div>
     <div class="radio-vol">
       <span>🔈</span>
       <input type="range" id="radio-vol" min="0" max="1" step="0.01" value="0.7">
       <span>🔊</span>
     </div>
+    <div class="radio-add-row">
+      <input type="text" id="radio-add-name" placeholder="Nazwa stacji...">
+      <input type="text" id="radio-add-url" placeholder="URL streamu (mp3/aac)...">
+      <button class="radio-add-btn" id="radio-add-btn">＋ Dodaj stację</button>
+    </div>
   </div>
 </div>
 
-<!-- NOTEPAD WINDOW -->
+<!-- NOTEPAD -->
 <div class="float-win" id="win-notepad" data-win-id="notepad">
-  <div class="win-header">
-    <span>📝 Notatnik</span>
-    <button class="win-close" data-win="notepad">✕</button>
-  </div>
-  <div class="win-body">
-    <textarea id="notepad-area" placeholder="Pisz tutaj..."></textarea>
-  </div>
+  <div class="win-header"><span>📝 Notatnik</span><button class="win-close" data-win="notepad">✕</button></div>
+  <div class="win-body"><textarea id="notepad-area" placeholder="Pisz tutaj..."></textarea></div>
 </div>
 
-<!-- CHECKLIST WINDOW -->
+<!-- CHECKLIST -->
 <div class="float-win" id="win-checklist" data-win-id="checklist">
-  <div class="win-header">
-    <span>✅ Checklista</span>
-    <button class="win-close" data-win="checklist">✕</button>
-  </div>
+  <div class="win-header"><span>✅ Checklista</span><button class="win-close" data-win="checklist">✕</button></div>
   <div class="win-body">
     <div class="check-add">
       <input type="text" id="check-input" placeholder="Nowe zadanie...">
@@ -575,10 +493,87 @@ svg#mm-links line {
   </div>
 </div>
 
-<!-- NODE HOVER MENU -->
-<div id="node-hover-menu">
+<!-- FLASHCARDS TOOL -->
+<div class="float-win" id="win-flashcards" data-win-id="flashcards">
+  <div class="win-header"><span>🃏 Fiszki</span><button class="win-close" data-win="flashcards">✕</button></div>
+  <div class="win-body">
+    <div class="fc-tabs">
+      <button class="fc-tab active" id="fc-tab-study">📖 Nauka</button>
+      <button class="fc-tab" id="fc-tab-manage">✏️ Edycja</button>
+    </div>
+    <!-- STUDY PANEL -->
+    <div id="fc-study-panel">
+      <div class="fc-card-area" id="fc-card-area">
+        <div class="fc-card" id="fc-card">
+          <div class="fc-face fc-front">
+            <div class="fc-face-label">Pytanie</div>
+            <div class="fc-face-text" id="fc-front-text">Kliknij by obrócić</div>
+          </div>
+          <div class="fc-face fc-back">
+            <div class="fc-face-label">Odpowiedź</div>
+            <div class="fc-face-text" id="fc-back-text">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="fc-nav">
+        <div class="fc-counter" id="fc-counter">0 / 0</div>
+        <div class="fc-nav-btns">
+          <button class="fc-small-btn" id="fc-prev">← Poprz</button>
+          <button class="fc-small-btn" id="fc-next">Nast →</button>
+          <button class="fc-small-btn" id="fc-shuffle">🔀</button>
+        </div>
+      </div>
+    </div>
+    <!-- MANAGE PANEL -->
+    <div id="fc-manage-panel" style="display:none">
+      <div class="fc-add-row">
+        <input type="text" id="fc-q-input" placeholder="Pytanie / Przód...">
+        <textarea id="fc-a-input" rows="2" placeholder="Odpowiedź / Tył..."></textarea>
+        <button class="fc-small-btn accent" id="fc-add-card">＋ Dodaj fiszkę</button>
+      </div>
+      <div class="check-list" id="fc-card-list" style="max-height:150px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- NODE CONTEXT MENU -->
+<div id="node-ctx">
+  <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Kolor węzła</div>
   <div class="color-grid" id="node-color-grid"></div>
-  <button class="menu-btn" id="node-unlink-btn">🗑️ Usuń wszystkie połączenia</button>
+  <div class="ctx-sep"></div>
+  <button class="ctx-btn" id="ctx-edit">✏️ Edytuj węzeł</button>
+  <button class="ctx-btn danger" id="ctx-unlink">🔗 Usuń połączenia</button>
+  <button class="ctx-btn danger" id="ctx-delete">🗑️ Usuń węzeł</button>
+</div>
+
+<!-- INLINE EDITOR MODAL -->
+<div id="inline-modal">
+  <div id="inline-modal-box">
+    <h3>✏️ Edytuj węzeł</h3>
+    <input type="text" class="modal-input" id="modal-title" placeholder="Tytuł węzła...">
+    <textarea class="modal-input modal-textarea" id="modal-desc" placeholder="Opis (opcjonalnie)..."></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn" id="modal-cancel">Anuluj</button>
+      <button class="modal-btn primary" id="modal-save">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<!-- COLOR PICKER MODAL -->
+<div id="color-picker-modal">
+  <div id="color-picker-box">
+    <h3 id="cp-title">Wybierz kolor</h3>
+    <div class="cp-palette" id="cp-palette"></div>
+    <div class="cp-custom">
+      <label>Własny kolor:</label>
+      <input type="color" id="cp-custom-input">
+    </div>
+    <div class="cp-preview" id="cp-preview"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="cp-cancel">Anuluj</button>
+      <button class="modal-btn primary" id="cp-confirm">Zastosuj</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -590,19 +585,24 @@ let saveTimer = null;
 
 const defaultState = () => ({
   view: 'mindmap',
-  nodes: [{ id: 'n1', x: 1950, y: 1950, text: 'Moja Mapa', color: '#1e1b4b' }],
+  nodes: [{ id:'n1', x:1950, y:1950, title:'Moja Mapa', desc:'', color:'#1e1b4b' }],
   links: [],
-  zoom: 1, pan: { x: 0, y: 0 },
+  zoom: 1, pan: { x:0, y:0 },
   windows: {
-    pomodoro: { visible: false, x: 40, y: 120 },
-    radio: { visible: false, x: 320, y: 120 },
-    notepad: { visible: false, x: 40, y: 400 },
-    checklist: { visible: false, x: 360, y: 400 }
+    pomodoro: { visible:false, x:40, y:100 },
+    radio: { visible:false, x:320, y:100 },
+    notepad: { visible:false, x:40, y:380 },
+    checklist: { visible:false, x:360, y:380 },
+    flashcards: { visible:false, x:200, y:200 }
   },
   notes: '',
   checklist: [],
-  pomodoro: { workMin: 25, breakMin: 5 },
-  radioUrl: '',
+  pomodoro: { workMin:25, breakMin:5 },
+  radioStations: [
+    { name:'LoFi Beats', url:'https://streams.ilovemusic.de/iloveradio17.mp3' },
+    { name:'Jazz 24', url:'https://live.amperwave.net/direct/ppm-jazz24aac-ibc1' }
+  ],
+  flashcards: [],
   settings: {
     primary: '#7c3aed',
     secondary: '#06b6d4',
@@ -615,14 +615,14 @@ let state;
 try {
   const saved = localStorage.getItem(STORE_KEY);
   if (saved) {
-    const parsed = JSON.parse(saved);
-    state = { ...defaultState(), ...parsed };
-    state.settings = { ...defaultState().settings, ...(parsed.settings || {}) };
-    state.windows = { ...defaultState().windows, ...(parsed.windows || {}) };
-    state.pomodoro = { ...defaultState().pomodoro, ...(parsed.pomodoro || {}) };
-  } else {
-    state = defaultState();
-  }
+    const p = JSON.parse(saved);
+    state = { ...defaultState(), ...p };
+    state.settings = { ...defaultState().settings, ...(p.settings||{}) };
+    state.windows = { ...defaultState().windows, ...(p.windows||{}) };
+    state.pomodoro = { ...defaultState().pomodoro, ...(p.pomodoro||{}) };
+    if (!state.radioStations) state.radioStations = defaultState().radioStations;
+    if (!state.flashcards) state.flashcards = [];
+  } else { state = defaultState(); }
 } catch(e) { state = defaultState(); }
 
 function schedSave() {
@@ -633,7 +633,7 @@ function schedSave() {
 }
 
 // ═══════════════════════════════════════════════════
-// CANVAS BACKGROUND - BLOBS
+// CANVAS BLOBS
 // ═══════════════════════════════════════════════════
 const bgCanvas = document.getElementById('bg-canvas');
 const bgCtx = bgCanvas.getContext('2d');
@@ -642,75 +642,63 @@ let blobs = [];
 function initBlobs() {
   const W = window.innerWidth, H = window.innerHeight;
   bgCanvas.width = W; bgCanvas.height = H;
-  blobs = Array.from({ length: 10 }, (_, i) => ({
-    x: Math.random() * W, y: Math.random() * H,
-    vx: (Math.random() - 0.5) * 0.5,
-    vy: (Math.random() - 0.5) * 0.5,
-    r: 180 + Math.random() * 200,
-    hue: [260, 200, 170, 30, 320][i % 5],
-    alpha: 0.06 + Math.random() * 0.06
+  blobs = Array.from({length:10}, (_,i) => ({
+    x: Math.random()*W, y: Math.random()*H,
+    vx: (Math.random()-.5)*.6, vy: (Math.random()-.5)*.6,
+    r: 180+Math.random()*200,
+    hue: [260,200,170,30,320][i%5],
+    alpha: .06+Math.random()*.06
   }));
 }
 
 function animateBlobs() {
   const W = bgCanvas.width, H = bgCanvas.height;
-  const spd = parseFloat(state.settings.blobSpeed) || 1;
-  bgCtx.clearRect(0, 0, W, H);
+  const spd = parseFloat(state.settings.blobSpeed)||1;
+  bgCtx.clearRect(0,0,W,H);
   bgCtx.fillStyle = '#0a0a0f';
-  bgCtx.fillRect(0, 0, W, H);
-
+  bgCtx.fillRect(0,0,W,H);
   for (const b of blobs) {
-    b.x += b.vx * spd;
-    b.y += b.vy * spd;
-    if (b.x < -b.r) b.x = W + b.r;
-    if (b.x > W + b.r) b.x = -b.r;
-    if (b.y < -b.r) b.y = H + b.r;
-    if (b.y > H + b.r) b.y = -b.r;
-
-    const g = bgCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-    g.addColorStop(0, `hsla(${b.hue}, 70%, 55%, ${b.alpha})`);
-    g.addColorStop(1, `hsla(${b.hue}, 70%, 55%, 0)`);
-    bgCtx.beginPath();
-    bgCtx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-    bgCtx.fillStyle = g;
-    bgCtx.fill();
+    b.x += b.vx*spd; b.y += b.vy*spd;
+    if (b.x < -b.r) b.x = W+b.r;
+    if (b.x > W+b.r) b.x = -b.r;
+    if (b.y < -b.r) b.y = H+b.r;
+    if (b.y > H+b.r) b.y = -b.r;
+    const g = bgCtx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
+    g.addColorStop(0,`hsla(${b.hue},70%,55%,${b.alpha})`);
+    g.addColorStop(1,`hsla(${b.hue},70%,55%,0)`);
+    bgCtx.beginPath(); bgCtx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    bgCtx.fillStyle = g; bgCtx.fill();
   }
   requestAnimationFrame(animateBlobs);
 }
 
-window.addEventListener('resize', () => { initBlobs(); });
-initBlobs();
-animateBlobs();
+window.addEventListener('resize', initBlobs);
+initBlobs(); animateBlobs();
 
 // ═══════════════════════════════════════════════════
-// ROUTING / VIEWS
+// ROUTING
 // ═══════════════════════════════════════════════════
 const views = { mindmap: document.getElementById('view-mindmap'), settings: document.getElementById('view-settings') };
-const dockBtns = { mindmap: document.getElementById('dock-mindmap'), settings: document.getElementById('dock-settings') };
+const dockBtnsMap = { mindmap: document.getElementById('dock-mindmap'), settings: document.getElementById('dock-settings') };
 
 function switchView(name) {
   if (!views[name]) return;
-  state.view = name;
-  schedSave();
-
-  Object.entries(views).forEach(([k, el]) => {
-    el.classList.remove('active', 'visible');
-    if (dockBtns[k]) dockBtns[k].classList.remove('active');
+  state.view = name; schedSave();
+  Object.entries(views).forEach(([k,el]) => {
+    el.classList.remove('active','visible');
+    if (dockBtnsMap[k]) dockBtnsMap[k].classList.remove('active');
   });
-
   views[name].classList.add('active');
-  if (dockBtns[name]) dockBtns[name].classList.add('active');
+  if (dockBtnsMap[name]) dockBtnsMap[name].classList.add('active');
   requestAnimationFrame(() => views[name].classList.add('visible'));
-
   if (name === 'mindmap') requestAnimationFrame(renderMindmap);
   location.hash = name;
 }
 
 document.getElementById('dock-mindmap').addEventListener('click', () => switchView('mindmap'));
 document.getElementById('dock-settings').addEventListener('click', () => switchView('settings'));
-
 window.addEventListener('hashchange', () => {
-  const h = location.hash.replace('#', '');
+  const h = location.hash.replace('#','');
   if (views[h]) switchView(h);
 });
 
@@ -720,17 +708,14 @@ window.addEventListener('hashchange', () => {
 const toolsDrawer = document.getElementById('tools-drawer');
 const dockTools = document.getElementById('dock-tools');
 
-dockTools.addEventListener('click', (e) => {
+dockTools.addEventListener('click', e => {
   e.stopPropagation();
   const open = toolsDrawer.classList.toggle('open');
   dockTools.classList.toggle('active', open);
 });
-
-document.addEventListener('click', (e) => {
-  if (!toolsDrawer.contains(e.target) && e.target !== dockTools) {
-    toolsDrawer.classList.remove('open');
-    dockTools.classList.remove('active');
-  }
+document.addEventListener('click', e => {
+  if (!toolsDrawer.contains(e.target) && e.target !== dockTools)
+    toolsDrawer.classList.remove('open'), dockTools.classList.remove('active');
 });
 
 // ═══════════════════════════════════════════════════
@@ -738,165 +723,114 @@ document.addEventListener('click', (e) => {
 // ═══════════════════════════════════════════════════
 let topZ = 400;
 
-function getWin(id) { return document.getElementById('win-' + id); }
-
 function applyWinState(id) {
   const ws = state.windows[id];
-  const el = getWin(id);
+  const el = document.getElementById('win-'+id);
   if (!el) return;
   if (ws.visible) {
     el.classList.add('visible');
-    el.style.left = (ws.x || 40) + 'px';
-    el.style.top = (ws.y || 120) + 'px';
-  } else {
-    el.classList.remove('visible');
-  }
+    el.style.left = Math.max(0, Math.min(window.innerWidth-80, ws.x||40))+'px';
+    el.style.top = Math.max(0, Math.min(window.innerHeight-80, ws.y||100))+'px';
+  } else { el.classList.remove('visible'); }
 }
 
 function toggleWin(id) {
   if (!state.windows[id]) return;
   state.windows[id].visible = !state.windows[id].visible;
   applyWinState(id);
-  document.querySelectorAll('.tool-btn[data-win="' + id + '"]').forEach(b => b.classList.toggle('active', state.windows[id].visible));
+  document.querySelectorAll('.tool-btn[data-win="'+id+'"]').forEach(b => b.classList.toggle('active', state.windows[id].visible));
   schedSave();
 }
 
-// Init windows from state
 Object.keys(state.windows).forEach(id => {
   applyWinState(id);
-  document.querySelectorAll('.tool-btn[data-win="' + id + '"]').forEach(b => b.classList.toggle('active', state.windows[id].visible));
+  document.querySelectorAll('.tool-btn[data-win="'+id+'"]').forEach(b => b.classList.toggle('active', state.windows[id].visible));
 });
 
-// Tool buttons
-document.querySelectorAll('.tool-btn[data-win]').forEach(btn => {
-  btn.addEventListener('click', () => toggleWin(btn.dataset.win));
-});
-
-// Close buttons
-document.querySelectorAll('.win-close[data-win]').forEach(btn => {
-  btn.addEventListener('click', () => toggleWin(btn.dataset.win));
-});
-
-// Bring to front
-document.querySelectorAll('.float-win').forEach(win => {
-  win.addEventListener('mousedown', () => { win.style.zIndex = ++topZ; });
-});
+document.querySelectorAll('.tool-btn[data-win]').forEach(btn => btn.addEventListener('click', () => toggleWin(btn.dataset.win)));
+document.querySelectorAll('.win-close[data-win]').forEach(btn => btn.addEventListener('click', () => toggleWin(btn.dataset.win)));
+document.querySelectorAll('.float-win').forEach(win => win.addEventListener('mousedown', () => { win.style.zIndex = ++topZ; }));
 
 // Drag windows
 document.querySelectorAll('.win-header').forEach(header => {
   const win = header.closest('.float-win');
-  let dragging = false, ox = 0, oy = 0;
-  header.addEventListener('mousedown', (e) => {
+  let dragging=false, ox=0, oy=0;
+  header.addEventListener('mousedown', e => {
     if (e.target.classList.contains('win-close')) return;
-    dragging = true;
-    ox = e.clientX - win.offsetLeft;
-    oy = e.clientY - win.offsetTop;
-    win.style.zIndex = ++topZ;
-    e.preventDefault();
+    dragging=true; ox=e.clientX-win.offsetLeft; oy=e.clientY-win.offsetTop;
+    win.style.zIndex = ++topZ; e.preventDefault();
   });
-  document.addEventListener('mousemove', (e) => {
+  document.addEventListener('mousemove', e => {
     if (!dragging) return;
-    const nx = Math.max(0, Math.min(window.innerWidth - 50, e.clientX - ox));
-    const ny = Math.max(0, Math.min(window.innerHeight - 50, e.clientY - oy));
-    win.style.left = nx + 'px';
-    win.style.top = ny + 'px';
+    const nx = Math.max(0, Math.min(window.innerWidth-60, e.clientX-ox));
+    const ny = Math.max(0, Math.min(window.innerHeight-60, e.clientY-oy));
+    win.style.left = nx+'px'; win.style.top = ny+'px';
     const id = win.dataset.winId;
-    if (state.windows[id]) { state.windows[id].x = nx; state.windows[id].y = ny; }
+    if (state.windows[id]) { state.windows[id].x=nx; state.windows[id].y=ny; }
     schedSave();
   });
-  document.addEventListener('mouseup', () => { dragging = false; });
+  document.addEventListener('mouseup', () => { dragging=false; });
 });
 
 // ═══════════════════════════════════════════════════
 // POMODORO
 // ═══════════════════════════════════════════════════
-let pomoState = {
-  running: false, isBreak: false, cycle: 1,
-  endTime: null, remaining: null
-};
+let pomoState = { running:false, isBreak:false, cycle:1, endTime:null, remaining:null };
 let pomoInterval = null;
-
 const pomoTimeEl = document.getElementById('pomo-time');
 const pomoPhaseEl = document.getElementById('pomo-phase');
 const pomoCycleEl = document.getElementById('pomo-cycle');
 const pomoWorkIn = document.getElementById('pomo-work-min');
 const pomoBreakIn = document.getElementById('pomo-break-min');
-
 pomoWorkIn.value = state.pomodoro.workMin;
 pomoBreakIn.value = state.pomodoro.breakMin;
 
-function formatTime(secs) {
-  const m = Math.floor(secs / 60).toString().padStart(2, '0');
-  const s = (secs % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-}
+function fmt(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
 
 function pomoReset() {
-  clearInterval(pomoInterval);
-  pomoInterval = null;
-  pomoState.running = false;
-  pomoState.isBreak = false;
-  pomoState.cycle = 1;
-  pomoState.endTime = null;
-  const secs = (parseInt(pomoWorkIn.value) || 25) * 60;
-  pomoState.remaining = secs;
-  pomoTimeEl.textContent = formatTime(secs);
-  pomoPhaseEl.textContent = 'Czas pracy';
-  pomoCycleEl.textContent = 'Cykl 1';
+  clearInterval(pomoInterval); pomoInterval=null;
+  pomoState = { running:false, isBreak:false, cycle:1, endTime:null, remaining:(parseInt(pomoWorkIn.value)||25)*60 };
+  pomoTimeEl.textContent = fmt(pomoState.remaining);
+  pomoPhaseEl.textContent = 'Czas pracy'; pomoCycleEl.textContent = 'Cykl 1';
 }
 
 function pomoTick() {
-  const now = Date.now();
-  const rem = Math.max(0, Math.round((pomoState.endTime - now) / 1000));
-  pomoState.remaining = rem;
-  pomoTimeEl.textContent = formatTime(rem);
+  const rem = Math.max(0, Math.round((pomoState.endTime - Date.now())/1000));
+  pomoState.remaining = rem; pomoTimeEl.textContent = fmt(rem);
   if (rem <= 0) {
-    clearInterval(pomoInterval);
-    pomoInterval = null;
-    pomoState.running = false;
+    clearInterval(pomoInterval); pomoInterval=null; pomoState.running=false;
     pomoState.isBreak = !pomoState.isBreak;
     if (!pomoState.isBreak) pomoState.cycle++;
-    const dur = pomoState.isBreak ? (parseInt(pomoBreakIn.value) || 5) : (parseInt(pomoWorkIn.value) || 25);
+    const dur = pomoState.isBreak ? (parseInt(pomoBreakIn.value)||5) : (parseInt(pomoWorkIn.value)||25);
     const label = pomoState.isBreak ? '☕ Przerwa' : '💪 Czas pracy';
-    pomoPhaseEl.textContent = label;
-    pomoCycleEl.textContent = `Cykl ${pomoState.cycle}`;
-    pomoState.remaining = dur * 60;
-    pomoTimeEl.textContent = formatTime(pomoState.remaining);
-    try { new Notification('Pomodoro', { body: `${label} – ${dur} minut` }); } catch(e) {}
-    alert(`${label}! Czas: ${dur} min`);
-    pomoStart();
+    pomoPhaseEl.textContent = label; pomoCycleEl.textContent = `Cykl ${pomoState.cycle}`;
+    pomoState.remaining = dur*60; pomoTimeEl.textContent = fmt(pomoState.remaining);
+    showToast(`${label}! Czas: ${dur} min`); pomoStart();
   }
 }
 
 function pomoStart() {
   if (pomoState.running) return;
-  pomoState.running = true;
-  const rem = pomoState.remaining || (parseInt(pomoWorkIn.value) || 25) * 60;
-  pomoState.endTime = Date.now() + rem * 1000;
+  pomoState.running=true;
+  pomoState.endTime = Date.now() + (pomoState.remaining||((parseInt(pomoWorkIn.value)||25)*60))*1000;
   pomoInterval = setInterval(pomoTick, 500);
   pomoPhaseEl.textContent = pomoState.isBreak ? '☕ Przerwa' : '💪 Czas pracy';
 }
 
 function pomoPause() {
   if (!pomoState.running) return;
-  clearInterval(pomoInterval); pomoInterval = null;
-  pomoState.running = false;
-  pomoState.remaining = Math.max(0, Math.round((pomoState.endTime - Date.now()) / 1000));
+  clearInterval(pomoInterval); pomoInterval=null; pomoState.running=false;
+  pomoState.remaining = Math.max(0, Math.round((pomoState.endTime-Date.now())/1000));
 }
 
 document.getElementById('pomo-start').addEventListener('click', pomoStart);
 document.getElementById('pomo-pause').addEventListener('click', pomoPause);
 document.getElementById('pomo-reset').addEventListener('click', pomoReset);
-
-[pomoWorkIn, pomoBreakIn].forEach(inp => {
-  inp.addEventListener('change', () => {
-    state.pomodoro.workMin = parseInt(pomoWorkIn.value) || 25;
-    state.pomodoro.breakMin = parseInt(pomoBreakIn.value) || 5;
-    if (!pomoState.running) pomoReset();
-    schedSave();
-  });
-});
-
+[pomoWorkIn,pomoBreakIn].forEach(inp => inp.addEventListener('change', () => {
+  state.pomodoro.workMin = parseInt(pomoWorkIn.value)||25;
+  state.pomodoro.breakMin = parseInt(pomoBreakIn.value)||5;
+  if (!pomoState.running) pomoReset(); schedSave();
+}));
 pomoReset();
 
 // ═══════════════════════════════════════════════════
@@ -905,93 +839,187 @@ pomoReset();
 let radioAudio = new Audio();
 radioAudio.crossOrigin = 'anonymous';
 let radioPlaying = false;
+let radioActiveIdx = -1;
+const gramDisc = document.getElementById('gram-disc');
+const gramArm = document.getElementById('gram-arm');
 
-const radioUrlInput = document.getElementById('radio-url-input');
-const radioPlayBtn = document.getElementById('radio-play-btn');
-const radioStatus = document.getElementById('radio-status');
-const radioVol = document.getElementById('radio-vol');
+function renderStations() {
+  const container = document.getElementById('radio-stations');
+  container.innerHTML = '';
+  (state.radioStations||[]).forEach((st, i) => {
+    const div = document.createElement('div');
+    div.className = 'radio-station-item' + (i===radioActiveIdx?' playing':'');
+    div.innerHTML = `<span class="radio-station-name">${escHtml(st.name)}</span><button class="radio-station-del" data-i="${i}">✕</button>`;
+    div.addEventListener('click', e => {
+      if (e.target.classList.contains('radio-station-del')) return;
+      radioActiveIdx = i; renderStations();
+      const btn = document.getElementById('radio-play-btn');
+      if (radioPlaying) { radioAudio.pause(); radioPlaying=false; }
+      radioAudio.src = st.url; radioAudio.load();
+      document.getElementById('radio-status').textContent = 'Ładowanie...';
+      radioAudio.play().then(() => {
+        radioPlaying=true; btn.textContent='⏸ Pauza';
+        document.getElementById('radio-status').textContent = '▶ ' + st.name;
+        gramDisc.classList.add('spinning'); gramArm.classList.add('playing');
+      }).catch(() => {
+        document.getElementById('radio-status').textContent = 'Błąd CORS / URL';
+        gramDisc.classList.remove('spinning'); gramArm.classList.remove('playing');
+      });
+    });
+    container.appendChild(div);
+  });
+  container.querySelectorAll('.radio-station-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i);
+      state.radioStations.splice(i,1);
+      if (radioActiveIdx===i) { radioAudio.pause(); radioPlaying=false; radioActiveIdx=-1; gramDisc.classList.remove('spinning'); gramArm.classList.remove('playing'); }
+      else if (radioActiveIdx>i) radioActiveIdx--;
+      renderStations(); schedSave();
+    });
+  });
+}
 
-radioUrlInput.value = state.radioUrl || '';
-radioVol.value = 0.7;
-radioAudio.volume = 0.7;
-
-radioUrlInput.addEventListener('input', () => {
-  state.radioUrl = radioUrlInput.value.trim();
-  schedSave();
-});
-
-radioPlayBtn.addEventListener('click', () => {
+document.getElementById('radio-play-btn').addEventListener('click', () => {
   if (!radioPlaying) {
-    const url = radioUrlInput.value.trim();
-    if (!url) { radioStatus.textContent = 'Podaj URL streamu!'; return; }
-    radioAudio.src = url;
-    radioAudio.load();
-    radioStatus.textContent = 'Ładowanie...';
+    if (radioActiveIdx<0 && state.radioStations.length>0) radioActiveIdx=0;
+    if (radioActiveIdx<0) { document.getElementById('radio-status').textContent='Wybierz stację!'; return; }
+    const st = state.radioStations[radioActiveIdx];
+    radioAudio.src = st.url; radioAudio.load();
+    document.getElementById('radio-status').textContent = 'Ładowanie...';
     radioAudio.play().then(() => {
-      radioPlaying = true;
-      radioPlayBtn.textContent = '⏸';
-      radioStatus.textContent = '▶ Gra';
-    }).catch(e => {
-      radioStatus.textContent = 'Błąd CORS / URL';
-      radioPlaying = false;
+      radioPlaying=true; document.getElementById('radio-play-btn').textContent='⏸ Pauza';
+      document.getElementById('radio-status').textContent = '▶ '+st.name;
+      gramDisc.classList.add('spinning'); gramArm.classList.add('playing');
+    }).catch(() => {
+      document.getElementById('radio-status').textContent='Błąd CORS / URL';
+      gramDisc.classList.remove('spinning'); gramArm.classList.remove('playing');
     });
   } else {
-    radioAudio.pause();
-    radioPlaying = false;
-    radioPlayBtn.textContent = '▶';
-    radioStatus.textContent = 'Wstrzymane';
+    radioAudio.pause(); radioPlaying=false;
+    document.getElementById('radio-play-btn').textContent='▶ Graj';
+    document.getElementById('radio-status').textContent='Wstrzymane';
+    gramDisc.classList.remove('spinning'); gramArm.classList.remove('playing');
   }
 });
 
-radioVol.addEventListener('input', () => { radioAudio.volume = parseFloat(radioVol.value); });
+document.getElementById('radio-vol').addEventListener('input', e => { radioAudio.volume=parseFloat(e.target.value); });
+
+document.getElementById('radio-add-btn').addEventListener('click', () => {
+  const name = document.getElementById('radio-add-name').value.trim();
+  const url = document.getElementById('radio-add-url').value.trim();
+  if (!name||!url) { showToast('Podaj nazwę i URL!'); return; }
+  state.radioStations.push({name,url});
+  document.getElementById('radio-add-name').value='';
+  document.getElementById('radio-add-url').value='';
+  renderStations(); schedSave();
+});
+
+renderStations();
 
 // ═══════════════════════════════════════════════════
 // NOTEPAD
 // ═══════════════════════════════════════════════════
 const notepadArea = document.getElementById('notepad-area');
-notepadArea.value = state.notes || '';
-notepadArea.addEventListener('input', () => { state.notes = notepadArea.value; schedSave(); });
+notepadArea.value = state.notes||'';
+notepadArea.addEventListener('input', () => { state.notes=notepadArea.value; schedSave(); });
 
 // ═══════════════════════════════════════════════════
 // CHECKLIST
 // ═══════════════════════════════════════════════════
-const checkList = document.getElementById('check-list');
-const checkInput = document.getElementById('check-input');
-
 function renderChecklist() {
-  checkList.innerHTML = '';
-  (state.checklist || []).forEach((item, i) => {
+  const list = document.getElementById('check-list');
+  list.innerHTML = '';
+  (state.checklist||[]).forEach((item,i) => {
     const div = document.createElement('div');
-    div.className = 'check-item' + (item.done ? ' done' : '');
-    div.innerHTML = `
-      <input type="checkbox" ${item.done ? 'checked' : ''}>
-      <span>${escHtml(item.text)}</span>
-      <button class="del-btn">✕</button>
-    `;
-    div.querySelector('input').addEventListener('change', (e) => {
-      state.checklist[i].done = e.target.checked;
-      div.classList.toggle('done', e.target.checked);
-      schedSave();
-    });
-    div.querySelector('.del-btn').addEventListener('click', () => {
-      state.checklist.splice(i, 1);
-      renderChecklist(); schedSave();
-    });
-    checkList.appendChild(div);
+    div.className = 'check-item'+(item.done?' done':'');
+    div.innerHTML = `<input type="checkbox" ${item.done?'checked':''}><span>${escHtml(item.text)}</span><button class="check-del">✕</button>`;
+    div.querySelector('input').addEventListener('change', e => { state.checklist[i].done=e.target.checked; div.classList.toggle('done',e.target.checked); schedSave(); });
+    div.querySelector('.check-del').addEventListener('click', () => { state.checklist.splice(i,1); renderChecklist(); schedSave(); });
+    list.appendChild(div);
+  });
+}
+function addCheckItem() {
+  const t = document.getElementById('check-input').value.trim();
+  if (!t) return;
+  state.checklist.push({text:t,done:false});
+  document.getElementById('check-input').value='';
+  renderChecklist(); schedSave();
+}
+document.getElementById('check-add-btn').addEventListener('click', addCheckItem);
+document.getElementById('check-input').addEventListener('keydown', e => { if(e.key==='Enter') addCheckItem(); });
+renderChecklist();
+
+// ═══════════════════════════════════════════════════
+// FLASHCARDS TOOL
+// ═══════════════════════════════════════════════════
+let fcIndex = 0;
+let fcFlipped = false;
+
+function renderFCList() {
+  const list = document.getElementById('fc-card-list');
+  list.innerHTML = '';
+  state.flashcards.forEach((fc,i) => {
+    const div = document.createElement('div');
+    div.className = 'check-item';
+    div.innerHTML = `<span style="flex:1">${escHtml(fc.q)}</span><button class="check-del" data-i="${i}">✕</button>`;
+    div.querySelector('.check-del').addEventListener('click', () => { state.flashcards.splice(i,1); renderFCList(); renderFC(); schedSave(); });
+    list.appendChild(div);
   });
 }
 
-function addCheckItem() {
-  const t = checkInput.value.trim();
-  if (!t) return;
-  state.checklist.push({ text: t, done: false });
-  checkInput.value = '';
-  renderChecklist(); schedSave();
+function renderFC() {
+  const cards = state.flashcards;
+  if (!cards.length) {
+    document.getElementById('fc-front-text').textContent = 'Brak fiszek';
+    document.getElementById('fc-back-text').textContent = '—';
+    document.getElementById('fc-counter').textContent = '0 / 0';
+    return;
+  }
+  if (fcIndex >= cards.length) fcIndex = 0;
+  if (fcIndex < 0) fcIndex = cards.length-1;
+  document.getElementById('fc-front-text').textContent = cards[fcIndex].q;
+  document.getElementById('fc-back-text').textContent = cards[fcIndex].a;
+  document.getElementById('fc-counter').textContent = `${fcIndex+1} / ${cards.length}`;
+  const card = document.getElementById('fc-card');
+  card.classList.remove('flipped'); fcFlipped=false;
 }
 
-document.getElementById('check-add-btn').addEventListener('click', addCheckItem);
-checkInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addCheckItem(); });
-renderChecklist();
+document.getElementById('fc-card-area').addEventListener('click', () => {
+  fcFlipped=!fcFlipped;
+  document.getElementById('fc-card').classList.toggle('flipped',fcFlipped);
+});
+document.getElementById('fc-prev').addEventListener('click', () => { fcIndex--; renderFC(); });
+document.getElementById('fc-next').addEventListener('click', () => { fcIndex++; renderFC(); });
+document.getElementById('fc-shuffle').addEventListener('click', () => {
+  for (let i=state.flashcards.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [state.flashcards[i],state.flashcards[j]]=[state.flashcards[j],state.flashcards[i]]; }
+  fcIndex=0; renderFC(); schedSave();
+});
+document.getElementById('fc-add-card').addEventListener('click', () => {
+  const q=document.getElementById('fc-q-input').value.trim();
+  const a=document.getElementById('fc-a-input').value.trim();
+  if(!q||!a){showToast('Podaj pytanie i odpowiedź!'); return;}
+  state.flashcards.push({q,a});
+  document.getElementById('fc-q-input').value='';
+  document.getElementById('fc-a-input').value='';
+  renderFCList(); renderFC(); schedSave();
+});
+
+// Tab switching
+document.getElementById('fc-tab-study').addEventListener('click', () => {
+  document.getElementById('fc-study-panel').style.display='';
+  document.getElementById('fc-manage-panel').style.display='none';
+  document.getElementById('fc-tab-study').classList.add('active');
+  document.getElementById('fc-tab-manage').classList.remove('active');
+});
+document.getElementById('fc-tab-manage').addEventListener('click', () => {
+  document.getElementById('fc-study-panel').style.display='none';
+  document.getElementById('fc-manage-panel').style.display='';
+  document.getElementById('fc-tab-manage').classList.add('active');
+  document.getElementById('fc-tab-study').classList.remove('active');
+  renderFCList();
+});
+
+renderFC();
 
 // ═══════════════════════════════════════════════════
 // MINDMAP ENGINE
@@ -999,311 +1027,273 @@ renderChecklist();
 const viewport = document.getElementById('mm-viewport');
 const world = document.getElementById('mm-world');
 const svgLinks = document.getElementById('mm-links');
-
-let mmZoom = state.zoom || 1;
-let mmPan = { ...((state.pan) || { x: 0, y: 0 }) };
+let mmZoom = state.zoom||1;
+let mmPan = { ...(state.pan||{x:0,y:0}) };
 let flashcardMode = false;
 let nodeIdCounter = Date.now();
 
-function applyTransform() {
-  world.style.transform = `translate(${mmPan.x}px, ${mmPan.y}px) scale(${mmZoom})`;
-}
+function applyTransform() { world.style.transform = `translate(${mmPan.x}px,${mmPan.y}px) scale(${mmZoom})`; }
+function saveMapState() { state.zoom=mmZoom; state.pan={...mmPan}; schedSave(); }
 
-function saveMapState() {
-  state.zoom = mmZoom;
-  state.pan = { ...mmPan };
-  schedSave();
-}
-
-// Centering on first load
 function centerMap() {
   if (state.nodes.length > 0) {
     const n = state.nodes[0];
-    mmPan.x = window.innerWidth / 2 - n.x * mmZoom;
-    mmPan.y = window.innerHeight / 2 - n.y * mmZoom;
+    mmPan.x = window.innerWidth/2 - n.x*mmZoom;
+    mmPan.y = window.innerHeight/2 - n.y*mmZoom;
   }
   applyTransform();
 }
 
-// ZOOM
-viewport.addEventListener('wheel', (e) => {
+viewport.addEventListener('wheel', e => {
   e.preventDefault();
   const rect = viewport.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  const delta = e.deltaY > 0 ? 0.9 : 1.1;
-  const newZoom = Math.min(2.5, Math.max(0.2, mmZoom * delta));
-  mmPan.x = mx - (mx - mmPan.x) * (newZoom / mmZoom);
-  mmPan.y = my - (my - mmPan.y) * (newZoom / mmZoom);
-  mmZoom = newZoom;
-  applyTransform(); saveMapState();
-}, { passive: false });
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const delta = e.deltaY>0 ? 0.9 : 1.1;
+  const nz = Math.min(2.5, Math.max(0.2, mmZoom*delta));
+  mmPan.x = mx-(mx-mmPan.x)*(nz/mmZoom);
+  mmPan.y = my-(my-mmPan.y)*(nz/mmZoom);
+  mmZoom=nz; applyTransform(); saveMapState();
+}, {passive:false});
 
-// PAN
-let isPanning = false, panStart = { x: 0, y: 0 }, panOrigin = { x: 0, y: 0 };
-
-viewport.addEventListener('mousedown', (e) => {
-  if (e.target !== viewport && e.target !== world && e.target !== svgLinks) return;
-  isPanning = true;
-  panStart = { x: e.clientX, y: e.clientY };
-  panOrigin = { ...mmPan };
+let isPanning=false, panStart={x:0,y:0}, panOrigin={x:0,y:0};
+viewport.addEventListener('mousedown', e => {
+  if (e.target!==viewport && e.target!==world && e.target!==svgLinks) return;
+  isPanning=true; panStart={x:e.clientX,y:e.clientY}; panOrigin={...mmPan};
   viewport.classList.add('grabbing');
 });
-
-document.addEventListener('mousemove', (e) => {
+document.addEventListener('mousemove', e => {
   if (!isPanning) return;
-  mmPan.x = panOrigin.x + (e.clientX - panStart.x);
-  mmPan.y = panOrigin.y + (e.clientY - panStart.y);
+  mmPan.x=panOrigin.x+(e.clientX-panStart.x);
+  mmPan.y=panOrigin.y+(e.clientY-panStart.y);
   applyTransform();
 });
-
 document.addEventListener('mouseup', () => {
-  if (isPanning) { isPanning = false; viewport.classList.remove('grabbing'); saveMapState(); }
+  if (isPanning) { isPanning=false; viewport.classList.remove('grabbing'); saveMapState(); }
 });
 
-// RENDER LINKS
 function renderLinks() {
-  svgLinks.innerHTML = '';
-  (state.links || []).forEach(l => {
-    const a = state.nodes.find(n => n.id === l.from);
-    const b = state.nodes.find(n => n.id === l.to);
-    if (!a || !b) return;
-    const ax = a.x + 60, ay = a.y + 20;
-    const bx = b.x + 60, by = b.y + 20;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', ax); line.setAttribute('y1', ay);
-    line.setAttribute('x2', bx); line.setAttribute('y2', by);
+  svgLinks.innerHTML='';
+  (state.links||[]).forEach(l => {
+    const a=state.nodes.find(n=>n.id===l.from), b=state.nodes.find(n=>n.id===l.to);
+    if (!a||!b) return;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', a.x+70); line.setAttribute('y1', a.y+30);
+    line.setAttribute('x2', b.x+70); line.setAttribute('y2', b.y+30);
     svgLinks.appendChild(line);
   });
 }
 
-// RENDER NODES
 function renderMindmap() {
-  // Remove existing node divs
-  world.querySelectorAll('.mm-node').forEach(n => n.remove());
+  world.querySelectorAll('.mm-node').forEach(n=>n.remove());
   renderLinks();
-
-  state.nodes.forEach((node, idx) => {
+  state.nodes.forEach((node,idx) => {
     const el = document.createElement('div');
     el.className = 'mm-node';
     el.dataset.id = node.id;
-    el.textContent = node.text;
-    el.style.left = node.x + 'px';
-    el.style.top = node.y + 'px';
+    el.style.left = node.x+'px'; el.style.top = node.y+'px';
     if (node.color) el.style.background = node.color;
-    if (flashcardMode && idx > 0) el.classList.add('flashcard-blur');
-
+    el.innerHTML = `<div class="mm-node-title">${escHtml(node.title||node.text||'')}</div><div class="mm-node-desc">${escHtml(node.desc||'')}</div>`;
+    if (flashcardMode && idx>0) el.classList.add('flashcard-blur');
+    if (flashcardMode && idx>0) el.addEventListener('click', e => { e.stopPropagation(); el.classList.remove('flashcard-blur'); });
     makeNodeDraggable(el, node);
-    makeNodeConnectable(el, node);
-
-    el.addEventListener('dblclick', (e) => {
-      e.stopPropagation();
-      const t = prompt('Edytuj węzeł:', node.text);
-      if (t !== null) { node.text = t; el.textContent = t; schedSave(); }
-    });
-
-    // Hover menu
-    let hoverTimeout = null;
-    el.addEventListener('mouseenter', (e) => {
-      clearTimeout(hoverTimeout);
-      showNodeMenu(e, node, el);
-    });
-    el.addEventListener('mouseleave', () => {
-      hoverTimeout = setTimeout(() => hideNodeMenu(), 200);
-    });
-
-    if (flashcardMode && idx > 0) {
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        el.classList.remove('flashcard-blur');
-      });
-    }
-
     world.appendChild(el);
   });
 }
 
-// ── NODE DRAGGING ──
-function makeNodeDraggable(el, node) {
-  let dragging = false, ox = 0, oy = 0;
-  let lastDropTarget = null;
+// ── NODE CONTEXT MENU (fixed position, mouse tracking) ──
+const nodeCtx = document.getElementById('node-ctx');
+let ctxNode = null, ctxEl = null;
+let ctxLeaveTimer = null;
 
-  el.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
+const NODE_COLORS = ['#1e1b4b','#172554','#064e3b','#3b0764','#1c1917','#312e81','#7c3aed','#1d4ed8','#0f766e','#be123c','#b45309','#374151','#dc2626','#ea580c','#16a34a','#0284c7','#7c3aed','#db2777'];
+document.getElementById('node-color-grid').innerHTML = NODE_COLORS.map(c=>`<div class="color-swatch" style="background:${c}" data-color="${c}"></div>`).join('');
+document.getElementById('node-color-grid').querySelectorAll('.color-swatch').forEach(sw => {
+  sw.addEventListener('mousedown', e => {
     e.stopPropagation();
-    dragging = true;
-    ox = (e.clientX - mmPan.x) / mmZoom - node.x;
-    oy = (e.clientY - mmPan.y) / mmZoom - node.y;
-    el.style.zIndex = 30;
-    hideNodeMenu();
+    if (!ctxNode) return;
+    ctxNode.color = sw.dataset.color;
+    if (ctxEl) ctxEl.style.background = sw.dataset.color;
+    schedSave(); hideCtx();
+  });
+});
+
+document.getElementById('ctx-edit').addEventListener('mousedown', e => {
+  e.stopPropagation();
+  if (!ctxNode) return;
+  hideCtx(); openNodeEditor(ctxNode);
+});
+document.getElementById('ctx-unlink').addEventListener('mousedown', e => {
+  e.stopPropagation();
+  if (!ctxNode) return;
+  state.links = state.links.filter(l=>l.from!==ctxNode.id&&l.to!==ctxNode.id);
+  renderLinks(); schedSave(); hideCtx(); showToast('Usunięto połączenia');
+});
+document.getElementById('ctx-delete').addEventListener('mousedown', e => {
+  e.stopPropagation();
+  if (!ctxNode) return;
+  state.nodes = state.nodes.filter(n=>n.id!==ctxNode.id);
+  state.links = state.links.filter(l=>l.from!==ctxNode.id&&l.to!==ctxNode.id);
+  renderMindmap(); schedSave(); hideCtx(); showToast('Usunięto węzeł');
+});
+
+nodeCtx.addEventListener('mouseenter', () => { clearTimeout(ctxLeaveTimer); });
+nodeCtx.addEventListener('mouseleave', () => { ctxLeaveTimer = setTimeout(hideCtx, 250); });
+
+function showCtx(e, node, el) {
+  clearTimeout(ctxLeaveTimer);
+  ctxNode=node; ctxEl=el;
+  let x=e.clientX+12, y=e.clientY-20;
+  nodeCtx.style.left=x+'px'; nodeCtx.style.top=y+'px';
+  nodeCtx.classList.add('show');
+  requestAnimationFrame(() => {
+    const r=nodeCtx.getBoundingClientRect();
+    if (r.right>window.innerWidth-8) nodeCtx.style.left=(x-r.width-20)+'px';
+    if (r.bottom>window.innerHeight-8) nodeCtx.style.top=(y-r.height+20)+'px';
+  });
+}
+
+function hideCtx() { nodeCtx.classList.remove('show'); ctxNode=null; ctxEl=null; }
+
+// ── INLINE NODE EDITOR ──
+let editingNode = null;
+function openNodeEditor(node) {
+  editingNode = node;
+  document.getElementById('modal-title').value = node.title||node.text||'';
+  document.getElementById('modal-desc').value = node.desc||'';
+  document.getElementById('inline-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('modal-title').focus(),50);
+}
+
+document.getElementById('modal-save').addEventListener('click', () => {
+  if (!editingNode) return;
+  editingNode.title = document.getElementById('modal-title').value.trim()||'Węzeł';
+  editingNode.desc = document.getElementById('modal-desc').value.trim();
+  delete editingNode.text;
+  renderMindmap(); schedSave();
+  document.getElementById('inline-modal').classList.remove('show');
+  editingNode=null;
+});
+document.getElementById('modal-cancel').addEventListener('click', () => {
+  document.getElementById('inline-modal').classList.remove('show'); editingNode=null;
+});
+document.getElementById('inline-modal').addEventListener('mousedown', e => {
+  if (e.target===document.getElementById('inline-modal')) {
+    document.getElementById('inline-modal').classList.remove('show'); editingNode=null;
+  }
+});
+document.getElementById('modal-title').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('modal-save').click(); });
+
+// ── NODE DRAGGING & HOVER ──
+function makeNodeDraggable(el, node) {
+  let dragging=false, ox=0, oy=0, lastDropTarget=null, didDrag=false;
+  let hoverTimer=null;
+
+  el.addEventListener('mouseenter', e => {
+    clearTimeout(hoverTimer); hoverTimer=null;
+    clearTimeout(ctxLeaveTimer);
+    if (!dragging) showCtx(e, node, el);
+  });
+  el.addEventListener('mousemove', e => {
+    if (!dragging && nodeCtx.classList.contains('show') && ctxNode===node) {
+      // keep menu roughly near cursor
+      // don't reposition aggressively, just clear hide timer
+      clearTimeout(ctxLeaveTimer);
+    }
+  });
+  el.addEventListener('mouseleave', () => {
+    hoverTimer = setTimeout(() => {
+      ctxLeaveTimer = setTimeout(hideCtx, 220);
+    }, 80);
   });
 
-  document.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    const nx = (e.clientX - mmPan.x) / mmZoom - ox;
-    const ny = (e.clientY - mmPan.y) / mmZoom - oy;
-    node.x = nx; node.y = ny;
-    el.style.left = nx + 'px';
-    el.style.top = ny + 'px';
-    renderLinks();
+  el.addEventListener('mousedown', e => {
+    if (e.button!==0) return;
+    e.stopPropagation();
+    dragging=true; didDrag=false;
+    ox=(e.clientX-mmPan.x)/mmZoom - node.x;
+    oy=(e.clientY-mmPan.y)/mmZoom - node.y;
+    el.style.zIndex=30; hideCtx();
+  });
 
-    // Highlight potential link target
-    const mx = (e.clientX - mmPan.x) / mmZoom;
-    const my = (e.clientY - mmPan.y) / mmZoom;
-    if (lastDropTarget) { lastDropTarget.classList.remove('drag-over'); lastDropTarget = null; }
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    didDrag=true;
+    const nx=(e.clientX-mmPan.x)/mmZoom-ox;
+    const ny=(e.clientY-mmPan.y)/mmZoom-oy;
+    node.x=nx; node.y=ny;
+    el.style.left=nx+'px'; el.style.top=ny+'px';
+    renderLinks();
+    const mx=(e.clientX-mmPan.x)/mmZoom, my=(e.clientY-mmPan.y)/mmZoom;
+    if (lastDropTarget) { lastDropTarget.classList.remove('drag-over'); lastDropTarget=null; }
     world.querySelectorAll('.mm-node').forEach(other => {
-      if (other === el) return;
-      const oNode = state.nodes.find(n => n.id === other.dataset.id);
-      if (!oNode) return;
-      const dx = mx - (oNode.x + 60), dy = my - (oNode.y + 20);
-      if (Math.sqrt(dx*dx + dy*dy) < 60) {
-        other.classList.add('drag-over');
-        lastDropTarget = other;
-      }
+      if (other===el) return;
+      const on=state.nodes.find(n=>n.id===other.dataset.id); if(!on) return;
+      const dx=mx-(on.x+70), dy=my-(on.y+30);
+      if (Math.sqrt(dx*dx+dy*dy)<65) { other.classList.add('drag-over'); lastDropTarget=other; }
     });
   });
 
-  document.addEventListener('mouseup', (e) => {
+  document.addEventListener('mouseup', () => {
     if (!dragging) return;
-    dragging = false;
-    el.style.zIndex = 10;
+    dragging=false; el.style.zIndex=10;
     if (lastDropTarget) {
       lastDropTarget.classList.remove('drag-over');
-      const targetId = lastDropTarget.dataset.id;
-      const alreadyLinked = state.links.some(l =>
-        (l.from === node.id && l.to === targetId) || (l.from === targetId && l.to === node.id)
-      );
-      if (!alreadyLinked && targetId !== node.id) {
-        state.links.push({ from: node.id, to: targetId });
-        renderLinks();
-      }
-      lastDropTarget = null;
+      const tid=lastDropTarget.dataset.id;
+      const linked=state.links.some(l=>(l.from===node.id&&l.to===tid)||(l.from===tid&&l.to===node.id));
+      if (!linked&&tid!==node.id) { state.links.push({from:node.id,to:tid}); renderLinks(); }
+      lastDropTarget=null;
     }
     schedSave();
   });
 }
 
-function makeNodeConnectable(el, node) {}
-
-// ── NODE HOVER MENU ──
-const nodeHoverMenu = document.getElementById('node-hover-menu');
-const colorGrid = document.getElementById('node-color-grid');
-const unlinkBtn = document.getElementById('node-unlink-btn');
-const NODE_COLORS = ['#1e1b4b','#172554','#064e3b','#3b0764','#1c1917','#7c3aed','#1d4ed8','#0f766e','#be123c','#b45309','#374151'];
-
-colorGrid.innerHTML = NODE_COLORS.map(c => `<div class="color-swatch" style="background:${c}" data-color="${c}"></div>`).join('');
-
-let menuHideTimeout = null;
-let menuActiveNode = null, menuActiveEl = null;
-
-nodeHoverMenu.addEventListener('mouseenter', () => clearTimeout(menuHideTimeout));
-nodeHoverMenu.addEventListener('mouseleave', () => { menuHideTimeout = setTimeout(hideNodeMenu, 200); });
-
-colorGrid.querySelectorAll('.color-swatch').forEach(sw => {
-  sw.addEventListener('click', () => {
-    if (!menuActiveNode) return;
-    menuActiveNode.color = sw.dataset.color;
-    if (menuActiveEl) menuActiveEl.style.background = sw.dataset.color;
-    schedSave(); hideNodeMenu();
-  });
-});
-
-unlinkBtn.addEventListener('click', () => {
-  if (!menuActiveNode) return;
-  state.links = state.links.filter(l => l.from !== menuActiveNode.id && l.to !== menuActiveNode.id);
-  renderLinks(); schedSave(); hideNodeMenu();
-});
-
-function showNodeMenu(e, node, el) {
-  menuActiveNode = node; menuActiveEl = el;
-  const rect = el.getBoundingClientRect();
-  nodeHoverMenu.style.left = rect.right + 8 + 'px';
-  nodeHoverMenu.style.top = rect.top + 'px';
-  // Boundary check
-  requestAnimationFrame(() => {
-    const mr = nodeHoverMenu.getBoundingClientRect();
-    if (mr.right > window.innerWidth - 10) nodeHoverMenu.style.left = (rect.left - mr.width - 8) + 'px';
-    if (mr.bottom > window.innerHeight - 10) nodeHoverMenu.style.top = (window.innerHeight - mr.height - 10) + 'px';
-  });
-  nodeHoverMenu.classList.add('visible');
-}
-
-function hideNodeMenu() {
-  nodeHoverMenu.classList.remove('visible');
-  menuActiveNode = null; menuActiveEl = null;
-}
-
 // ── ADD NODE ──
 document.getElementById('btn-add-node').addEventListener('click', () => {
-  const cx = (window.innerWidth / 2 - mmPan.x) / mmZoom;
-  const cy = (window.innerHeight / 2 - mmPan.y) / mmZoom;
-  const id = 'n' + (++nodeIdCounter);
-  state.nodes.push({
-    id, x: cx - 60 + (Math.random() - 0.5) * 100,
-    y: cy - 20 + (Math.random() - 0.5) * 100,
-    text: 'Nowy węzeł', color: '#1e1b4b'
-  });
+  const cx=(window.innerWidth/2-mmPan.x)/mmZoom;
+  const cy=(window.innerHeight/2-mmPan.y)/mmZoom;
+  const id='n'+(++nodeIdCounter);
+  state.nodes.push({ id, x:cx-60+(Math.random()-.5)*120, y:cy-20+(Math.random()-.5)*120, title:'Nowy węzeł', desc:'', color:'#1e1b4b' });
   renderMindmap(); schedSave();
 });
 
 // ── FLASHCARD MODE ──
-const btnFlashcard = document.getElementById('btn-flashcard');
-btnFlashcard.addEventListener('click', () => {
-  flashcardMode = !flashcardMode;
-  btnFlashcard.classList.toggle('active', flashcardMode);
+document.getElementById('btn-flashcard').addEventListener('click', () => {
+  flashcardMode=!flashcardMode;
+  document.getElementById('btn-flashcard').classList.toggle('active',flashcardMode);
   renderMindmap();
 });
 
 // ── EXPORT JSON ──
 document.getElementById('btn-export-json').addEventListener('click', () => {
-  const data = JSON.stringify({ nodes: state.nodes, links: state.links }, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'mapa-mysli.json';
-  a.click();
+  const blob=new Blob([JSON.stringify({nodes:state.nodes,links:state.links},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mapa-mysli.json'; a.click();
 });
 
 // ── IMPORT JSON ──
-const importFileInput = document.getElementById('import-file-input');
-document.getElementById('btn-import-json').addEventListener('click', () => importFileInput.click());
-importFileInput.addEventListener('change', (e) => {
-  const f = e.target.files[0];
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
+document.getElementById('btn-import-json').addEventListener('click', () => document.getElementById('import-file').click());
+document.getElementById('import-file').addEventListener('change', e => {
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
     try {
-      const data = JSON.parse(ev.target.result);
-      if (data.nodes) state.nodes = data.nodes;
-      if (data.links) state.links = data.links;
-      renderMindmap(); schedSave();
-      showToast('Zaimportowano mapę!');
-    } catch(err) { showToast('Błąd importu pliku JSON'); }
+      const d=JSON.parse(ev.target.result);
+      if(d.nodes) state.nodes=d.nodes; if(d.links) state.links=d.links;
+      renderMindmap(); schedSave(); showToast('Zaimportowano mapę!');
+    } catch(err) { showToast('Błąd importu JSON'); }
   };
-  reader.readAsText(f);
-  importFileInput.value = '';
+  r.readAsText(f); e.target.value='';
 });
 
 // ── EXPORT PNG ──
 document.getElementById('btn-export-png').addEventListener('click', async () => {
-  const savedZoom = mmZoom, savedPan = { ...mmPan };
-  mmZoom = 1; mmPan = { x: 0, y: 0 };
-  applyTransform();
-  await new Promise(r => setTimeout(r, 300));
+  const sz=mmZoom, sp={...mmPan};
+  mmZoom=1; mmPan={x:0,y:0}; applyTransform();
+  await new Promise(r=>setTimeout(r,300));
   try {
-    const canvas = await html2canvas(world, {
-      backgroundColor: '#0a0a0f',
-      scale: 1,
-      useCORS: true,
-      allowTaint: true
-    });
-    const a = document.createElement('a');
-    a.download = 'mapa-mysli.png';
-    a.href = canvas.toDataURL('image/png');
-    a.click();
+    const c=await html2canvas(world,{backgroundColor:'#0a0a0f',scale:1,useCORS:true,allowTaint:true});
+    const a=document.createElement('a'); a.download='mapa-mysli.png'; a.href=c.toDataURL('image/png'); a.click();
   } catch(e) { showToast('Błąd eksportu PNG'); }
-  mmZoom = savedZoom; mmPan = savedPan;
-  applyTransform();
+  mmZoom=sz; mmPan=sp; applyTransform();
 });
 
 // ═══════════════════════════════════════════════════
@@ -1311,56 +1301,99 @@ document.getElementById('btn-export-png').addEventListener('click', async () => 
 // ═══════════════════════════════════════════════════
 const root = document.documentElement;
 
+// Palette colors for color picker
+const CP_PALETTE = [
+  '#7c3aed','#6d28d9','#4f46e5','#2563eb','#0284c7','#06b6d4','#0d9488',
+  '#16a34a','#65a30d','#ca8a04','#d97706','#ea580c','#dc2626','#e11d48',
+  '#db2777','#9333ea','#1e1b4b','#0f172a','#1c1917','#374151','#6b7280',
+  '#f0f0f5','#ffffff','#000000'
+];
+
+let cpTarget = null; // 'primary' or 'secondary'
+let cpCurrent = '#7c3aed';
+
+function buildPalette() {
+  const pal = document.getElementById('cp-palette');
+  pal.innerHTML = CP_PALETTE.map(c=>`<div class="cp-swatch" style="background:${c}" data-color="${c}"></div>`).join('');
+  pal.querySelectorAll('.cp-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      pal.querySelectorAll('.cp-swatch').forEach(s=>s.classList.remove('selected'));
+      sw.classList.add('selected'); cpCurrent=sw.dataset.color;
+      document.getElementById('cp-preview').style.background=cpCurrent;
+      document.getElementById('cp-custom-input').value=cpCurrent;
+    });
+  });
+}
+buildPalette();
+
+document.getElementById('cp-custom-input').addEventListener('input', e => {
+  cpCurrent=e.target.value;
+  document.getElementById('cp-preview').style.background=cpCurrent;
+});
+
+function openColorPicker(target) {
+  cpTarget=target; cpCurrent=state.settings[target];
+  document.getElementById('cp-title').textContent = target==='primary' ? '🎨 Kolor główny' : '🎨 Kolor akcentu';
+  document.getElementById('cp-preview').style.background=cpCurrent;
+  document.getElementById('cp-custom-input').value=cpCurrent;
+  document.getElementById('cp-palette').querySelectorAll('.cp-swatch').forEach(s=>{
+    s.classList.toggle('selected', s.dataset.color===cpCurrent);
+  });
+  document.getElementById('color-picker-modal').classList.add('show');
+}
+
+document.getElementById('open-cp-primary').addEventListener('click', ()=>openColorPicker('primary'));
+document.getElementById('open-cp-secondary').addEventListener('click', ()=>openColorPicker('secondary'));
+
+document.getElementById('cp-confirm').addEventListener('click', () => {
+  if (!cpTarget) return;
+  state.settings[cpTarget]=cpCurrent;
+  applySettings();
+  document.getElementById('color-picker-modal').classList.remove('show');
+  schedSave();
+});
+document.getElementById('cp-cancel').addEventListener('click', () => {
+  document.getElementById('color-picker-modal').classList.remove('show');
+});
+document.getElementById('color-picker-modal').addEventListener('mousedown', e => {
+  if (e.target===document.getElementById('color-picker-modal'))
+    document.getElementById('color-picker-modal').classList.remove('show');
+});
+
+document.getElementById('set-font').addEventListener('change', e => {
+  state.settings.font=e.target.value; root.style.setProperty('--font-main',e.target.value); schedSave();
+});
+document.getElementById('set-blob-speed').addEventListener('input', e => {
+  state.settings.blobSpeed=parseFloat(e.target.value); schedSave();
+});
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (confirm('Na pewno wyczyścić wszystkie dane?')) {
+    try{localStorage.removeItem(STORE_KEY);}catch(e){}
+    location.reload();
+  }
+});
+
 function applySettings() {
   const s = state.settings;
   root.style.setProperty('--primary', s.primary);
   root.style.setProperty('--secondary', s.secondary);
   root.style.setProperty('--font-main', s.font);
-  root.style.setProperty('--blob-speed', s.blobSpeed);
-  document.getElementById('set-primary').value = s.primary;
-  document.getElementById('set-secondary').value = s.secondary;
   document.getElementById('set-font').value = s.font;
   document.getElementById('set-blob-speed').value = s.blobSpeed;
+  document.getElementById('swatch-primary').style.background = s.primary;
+  document.getElementById('label-primary').textContent = s.primary;
+  document.getElementById('swatch-secondary').style.background = s.secondary;
+  document.getElementById('label-secondary').textContent = s.secondary;
 }
-
-document.getElementById('set-primary').addEventListener('input', (e) => {
-  state.settings.primary = e.target.value;
-  root.style.setProperty('--primary', e.target.value);
-  schedSave();
-});
-document.getElementById('set-secondary').addEventListener('input', (e) => {
-  state.settings.secondary = e.target.value;
-  root.style.setProperty('--secondary', e.target.value);
-  schedSave();
-});
-document.getElementById('set-font').addEventListener('change', (e) => {
-  state.settings.font = e.target.value;
-  root.style.setProperty('--font-main', e.target.value);
-  schedSave();
-});
-document.getElementById('set-blob-speed').addEventListener('input', (e) => {
-  state.settings.blobSpeed = parseFloat(e.target.value);
-  root.style.setProperty('--blob-speed', e.target.value);
-  schedSave();
-});
-
-document.getElementById('btn-reset').addEventListener('click', () => {
-  if (confirm('Na pewno wyczyścić wszystkie dane?')) {
-    try { localStorage.removeItem(STORE_KEY); } catch(e) {}
-    location.reload();
-  }
-});
-
 applySettings();
 
 // ═══════════════════════════════════════════════════
 // TOAST
 // ═══════════════════════════════════════════════════
-function showToast(msg, duration = 2500) {
-  const t = document.createElement('div');
-  t.className = 'toast'; t.textContent = msg;
+function showToast(msg, dur=2500) {
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
   document.body.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, duration);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); },dur);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1370,15 +1403,22 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Close ctx on general click ──
+document.addEventListener('mousedown', e => {
+  if (!nodeCtx.contains(e.target) && !e.target.classList.contains('mm-node') && !e.target.closest('.mm-node')) {
+    hideCtx();
+  }
+});
+
 // ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
 function init() {
-  const h = location.hash.replace('#', '') || state.view || 'mindmap';
+  const h = location.hash.replace('#','')||state.view||'mindmap';
   switchView(views[h] ? h : 'mindmap');
   renderMindmap();
-  if (!state.pan || (state.pan.x === 0 && state.pan.y === 0)) centerMap();
-  else { applyTransform(); }
+  if (!state.pan||(state.pan.x===0&&state.pan.y===0)) centerMap();
+  else applyTransform();
 }
 
 init();
