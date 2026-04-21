@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyOS | Advanced Knowledge Environment</title>
+    <!-- Google Fonts Placeholder (Dynamic Loading) -->
+    <link id="main-font-link" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap">
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --primary: #6366f1;
+            --accent: #a855f7;
+            --bg: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --font-main: 'Inter', sans-serif;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --blur: blur(12px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; }
+        body {
+            font-family: var(--font-main);
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+        }
+
+        /* --- LAYOUT & CANVAS --- */
+        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -2; pointer-events: none; }
+        #node-canvas { position: absolute; top: 0; left: 0; z-index: 1; cursor: crosshair; }
+
+        /* --- TOP DOCK --- */
+        .dock {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel-bg);
+            backdrop-filter: var(--blur);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 20px;
+            border-radius: 50px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transition: var(--transition);
+        }
+
+        .dock:hover { border-color: var(--primary); }
+        .dock-item {
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 8px;
+            border-radius: 50%;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .dock-item:hover { background: rgba(255,255,255,0.1); transform: translateY(-3px); }
+        .dock-item[title]::after {
+            content: attr(title);
+            position: absolute;
+            bottom: -35px;
+            font-size: 0.7rem;
+            background: black;
+            padding: 2px 8px;
+            border-radius: 4px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .dock-item:hover::after { opacity: 1; }
+
+        /* --- PANELS (WINDOWS) --- */
+        .panel {
+            position: absolute;
+            background: var(--panel-bg);
+            backdrop-filter: var(--blur);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            min-width: 280px;
+            z-index: 50;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            resize: both;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+        .panel-content { padding: 16px; overflow-y: auto; flex-grow: 1; }
+        .btn-close { cursor: pointer; opacity: 0.6; transition: 0.2s; }
+        .btn-close:hover { opacity: 1; color: #f87171; }
+
+        /* --- MODULE SPECIFIC STYLES --- */
+        .pomodoro-display { font-size: 3rem; font-weight: bold; text-align: center; margin: 10px 0; font-family: monospace; }
+        .control-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        input, select, textarea, button {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            width: 100%;
+            font-family: inherit;
+        }
+        button { cursor: pointer; background: var(--primary); font-weight: bold; border: none; transition: 0.2s; }
+        button:hover { filter: brightness(1.2); }
+        
+        /* Flashcards 3D */
+        .flashcard-container { perspective: 1000px; width: 100%; height: 200px; margin: 10px 0; }
+        .flashcard-inner {
+            position: relative; width: 100%; height: 100%; text-align: center;
+            transition: transform 0.6s; transform-style: preserve-3d; cursor: pointer;
+        }
+        .flashcard-inner.flipped { transform: rotateY(180deg); }
+        .card-front, .card-back {
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+            display: flex; align-items: center; justify-content: center; padding: 20px;
+            border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--primary);
+        }
+        .card-back { transform: rotateY(180deg); background: var(--primary); color: white; }
+
+        /* Checklist */
+        .check-item { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .check-item input[type="checkbox"] { width: auto; }
+
+        /* --- THEME PANEL --- */
+        .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        /* --- NODE EDIT MODAL --- */
+        .modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.8); z-index: 1000;
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal { background: var(--bg); padding: 25px; border-radius: 20px; width: 400px; border: 1px solid var(--primary); }
+
+        /* --- ANIMATIONS --- */
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .active-module { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="node-canvas"></canvas>
+
+    <!-- TOP DOCK -->
+    <nav class="dock">
+        <div class="dock-item" onclick="app.nodes.addNode()" title="Dodaj Węzeł">🧠</div>
+        <div class="dock-item" onclick="app.ui.togglePanel('panel-pomodoro')" title="Pomodoro">⏱</div>
+        <div class="dock-item" onclick="app.ui.togglePanel('panel-radio')" title="Radio">📻</div>
+        <div class="dock-item" onclick="app.ui.togglePanel('panel-notes')" title="Notatnik">📝</div>
+        <div class="dock-item" onclick="app.ui.togglePanel('panel-tasks')" title="Checklista">✅</div>
+        <div class="dock-item" onclick="app.ui.togglePanel('panel-flashcards')" title="Fiszki">🃏</div>
+        <div class="dock-item" onclick="app.ui.togglePanel('panel-theme')" title="Ustawienia / Motyw">⚙️</div>
+        <div style="width: 1px; background: rgba(255,255,255,0.2); margin: 5px 0;"></div>
+        <div class="dock-item" onclick="app.data.exportJSON()" title="Eksportuj JSON">⬇</div>
+        <div class="dock-item" onclick="document.getElementById('importFile').click()" title="Importuj JSON">⬆</div>
+        <div class="dock-item" onclick="app.nodes.exportPNG()" title="Zapisz obraz">📷</div>
+        <div class="dock-item" onclick="app.data.reset()" title="Wyczyść dane" style="color: #f87171;">🗑️</div>
+    </nav>
+    <input type="file" id="importFile" style="display:none" onchange="app.data.importJSON(event)">
+
+    <!-- PANELS -->
+    <div id="panel-pomodoro" class="panel" style="top: 100px; left: 50px;">
+        <div class="panel-header"><span>⏱ Pomodoro</span> <span class="btn-close" onclick="app.ui.togglePanel('panel-pomodoro')">✕</span></div>
+        <div class="panel-content">
+            <div class="pomodoro-display" id="pom-time">25:00</div>
+            <div id="pom-status" style="text-align: center; margin-bottom: 10px; color: var(--accent);">Praca</div>
+            <div class="control-group">
+                <button onclick="app.modules.pomodoro.start()">▶</button>
+                <button onclick="app.modules.pomodoro.pause()">⏸</button>
+                <button onclick="app.modules.pomodoro.reset()">↺</button>
+            </div>
+            <div class="theme-grid">
+                <input type="number" id="pom-work" value="25" placeholder="Praca">
+                <input type="number" id="pom-break" value="5" placeholder="Przerwa">
+            </div>
+        </div>
+    </div>
+
+    <div id="panel-radio" class="panel" style="top: 100px; right: 50px;">
+        <div class="panel-header"><span>📻 Lo-Fi Radio</span> <span class="btn-close" onclick="app.ui.togglePanel('panel-radio')">✕</span></div>
+        <div class="panel-content">
+            <audio id="audio-player" crossorigin="anonymous"></audio>
+            <div class="control-group">
+                <select id="radio-stations" onchange="app.modules.radio.changeStation()">
+                    <option value="https://lofi.stream.laut.fm/lofi">Lofi.fm</option>
+                    <option value="https://icecast.walmradio.com:8443/classic">Classic Radio</option>
+                    <option value="https://stream.nightride.fm/nightride.mp3">Synthwave</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <button id="radio-play" onclick="app.modules.radio.toggle()">▶ Graj</button>
+                <input type="range" id="radio-vol" min="0" max="1" step="0.1" value="0.5" oninput="app.modules.radio.setVol(this.value)">
+            </div>
+            <div style="font-size: 0.8rem; opacity: 0.7;">Visualizer: <select id="viz-type" onchange="app.audio.setType(this.value)">
+                <option value="none">Wyłączony</option>
+                <option value="bars">Słupki</option>
+                <option value="wave">Fala</option>
+            </select></div>
+        </div>
+    </div>
+
+    <div id="panel-notes" class="panel" style="bottom: 50px; left: 50px; width: 350px;">
+        <div class="panel-header"><span>📝 Notatnik</span> <span class="btn-close" onclick="app.ui.togglePanel('panel-notes')">✕</span></div>
+        <div class="panel-content">
+            <textarea id="notes-area" spellcheck="false" style="height: 250px; resize: none;" oninput="app.data.save()"></textarea>
+        </div>
+    </div>
+
+    <div id="panel-tasks" class="panel" style="bottom: 50px; right: 50px; width: 300px;">
+        <div class="panel-header"><span>✅ Checklista</span> <span class="btn-close" onclick="app.ui.togglePanel('panel-tasks')">✕</span></div>
+        <div class="panel-content">
+            <div id="task-list"></div>
+            <button onclick="app.modules.tasks.addTask()" style="margin-top:10px">+ Dodaj zadanie</button>
+        </div>
+    </div>
+
+    <div id="panel-flashcards" class="panel" style="top: 20%; left: 35%; width: 400px;">
+        <div class="panel-header"><span>🃏 Fiszki</span> <span class="btn-close" onclick="app.ui.togglePanel('panel-flashcards')">✕</span></div>
+        <div class="panel-content">
+            <div id="fc-view-study">
+                <div class="flashcard-container" onclick="this.querySelector('.flashcard-inner').classList.toggle('flipped')">
+                    <div class="flashcard-inner">
+                        <div class="card-front" id="fc-front">Pytanie</div>
+                        <div class="card-back" id="fc-back">Odpowiedź</div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <button onclick="app.modules.flashcards.prev()">←</button>
+                    <span id="fc-counter" style="line-height: 40px;">0 / 0</span>
+                    <button onclick="app.modules.flashcards.next()">→</button>
+                </div>
+                <button onclick="app.modules.flashcards.toggleMode()">Tryb Edycji</button>
+            </div>
+            <div id="fc-view-edit" style="display:none">
+                <input type="text" id="fc-q" placeholder="Pytanie">
+                <input type="text" id="fc-a" placeholder="Odpowiedź" style="margin: 5px 0;">
+                <button onclick="app.modules.flashcards.add()">Dodaj</button>
+                <button onclick="app.modules.flashcards.toggleMode()" style="background: gray; margin-top:5px">Powrót</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="panel-theme" class="panel" style="top: 100px; left: calc(50% - 150px); width: 300px;">
+        <div class="panel-header"><span>🎨 Personalizacja</span> <span class="btn-close" onclick="app.ui.togglePanel('panel-theme')">✕</span></div>
+        <div class="panel-content">
+            <label>Główny kolor</label>
+            <input type="color" id="theme-primary" onchange="app.ui.updateTheme()">
+            <label>Czcionka</label>
+            <select id="theme-font" onchange="app.ui.updateTheme()">
+                <option value="Inter">Inter (Modern)</option>
+                <option value="Space Grotesk">Space Grotesk</option>
+                <option value="JetBrains Mono">JetBrains Mono</option>
+                <option value="Playfair Display">Playfair Display</option>
+            </select>
+            <label>Styl tła</label>
+            <select id="theme-bg" onchange="app.ui.updateTheme()">
+                <option value="particles">Cząsteczki</option>
+                <option value="grid">Siatka Cyberpunk</option>
+                <option value="gradient">Ruchomy Gradient</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT NODE -->
+    <div id="modal-node" class="modal-overlay">
+        <div class="modal">
+            <h3>Edytuj Węzeł</h3><br>
+            <input type="text" id="node-emoji" placeholder="Emoji (np. 🧠)">
+            <label>Kolor</label>
+            <input type="color" id="node-color">
+            <br><br>
+            <div class="control-group">
+                <button onclick="app.nodes.saveNode()" style="background: #22c55e;">Zapisz</button>
+                <button onclick="app.nodes.deleteNode()" style="background: #ef4444;">Usuń</button>
+            </div>
+            <button onclick="app.ui.closeModal()" style="background: gray;">Anuluj</button>
+        </div>
+    </div>
+
+    <script>
+        /* --- APP STATE & ENGINE --- */
+        const app = {
+            state: {
+                nodes: [],
+                connections: [],
+                notes: "",
+                tasks: [],
+                flashcards: [{q: "Przykład", a: "Example"}],
+                theme: { primary: '#6366f1', font: 'Inter', bg: 'particles' },
+                settings: { pomodoro: { work: 25, break: 5 } }
+            },
+
+            init() {
+                this.data.load();
+                this.ui.init();
+                this.nodes.init();
+                this.audio.init();
+                this.bg.init();
+                this.modules.pomodoro.init();
+                this.modules.tasks.render();
+                this.modules.flashcards.update();
+                
+                window.addEventListener('resize', () => {
+                    this.bg.resize();
+                    this.nodes.resize();
+                });
+                
+                requestAnimationFrame((t) => this.loop(t));
+            },
+
+            loop(t) {
+                this.bg.draw();
+                this.nodes.draw();
+                this.audio.draw();
+                requestAnimationFrame((t) => this.loop(t));
+            },
+
+            /* --- DATA MANAGEMENT --- */
+            data: {
+                save() {
+                    app.state.notes = document.getElementById('notes-area').value;
+                    localStorage.setItem('studyos_data', JSON.stringify(app.state));
+                },
+                load() {
+                    const saved = localStorage.getItem('studyos_data');
+                    if(saved) {
+                        app.state = Object.assign(app.state, JSON.parse(saved));
+                        document.getElementById('notes-area').value = app.state.notes;
+                        app.ui.updateTheme(false);
+                    }
+                },
+                exportJSON() {
+                    const blob = new Blob([JSON.stringify(app.state)], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = 'studyos_backup.json'; a.click();
+                },
+                importJSON(e) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        app.state = JSON.parse(event.target.result);
+                        app.data.save();
+                        location.reload();
+                    };
+                    reader.readAsText(e.target.files[0]);
+                },
+                reset() {
+                    if(confirm("Czy na pewno chcesz usunąć wszystkie dane?")) {
+                        localStorage.clear();
+                        location.reload();
+                    }
+                }
+            },
+
+            /* --- UI CONTROLLER --- */
+            ui: {
+                init() {
+                    // Draggable panels
+                    document.querySelectorAll('.panel-header').forEach(header => {
+                        header.onmousedown = (e) => {
+                            let panel = header.parentElement;
+                            let shiftX = e.clientX - panel.getBoundingClientRect().left;
+                            let shiftY = e.clientY - panel.getBoundingClientRect().top;
+                            
+                            function move(e) {
+                                panel.style.left = e.clientX - shiftX + 'px';
+                                panel.style.top = e.clientY - shiftY + 'px';
+                            }
+                            document.onmousemove = move;
+                            document.onmouseup = () => { document.onmousemove = null; };
+                        };
+                    });
+                },
+                togglePanel(id) {
+                    const p = document.getElementById(id);
+                    p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+                },
+                updateTheme(save = true) {
+                    const font = document.getElementById('theme-font').value;
+                    const primary = document.getElementById('theme-primary').value;
+                    const bgStyle = document.getElementById('theme-bg').value;
+                    
+                    document.documentElement.style.setProperty('--primary', primary);
+                    document.documentElement.style.setProperty('--font-main', font);
+                    
+                    if(font !== "Inter") {
+                        const link = document.getElementById('main-font-link');
+                        link.href = `https://fonts.googleapis.com/css2?family=${font.replace(' ', '+')}:wght@400;700&display=swap`;
+                    }
+                    
+                    app.state.theme = { primary, font, bg: bgStyle };
+                    if(save) app.data.save();
+                },
+                openModal(nodeId) {
+                    this.editingNode = nodeId;
+                    const node = app.state.nodes.find(n => n.id === nodeId);
+                    document.getElementById('node-emoji').value = node.icon;
+                    document.getElementById('node-color').value = node.color;
+                    document.getElementById('modal-node').style.display = 'flex';
+                },
+                closeModal() { document.getElementById('modal-node').style.display = 'none'; }
+            },
+
+            /* --- KNOWLEDGE GRAPH (CANVAS) --- */
+            nodes: {
+                ctx: null,
+                canvas: null,
+                dragNode: null,
+                init() {
+                    this.canvas = document.getElementById('node-canvas');
+                    this.ctx = this.canvas.getContext('2d');
+                    this.resize();
+
+                    this.canvas.onmousedown = (e) => {
+                        const hit = this.getAt(e.clientX, e.clientY);
+                        if(hit) {
+                            this.dragNode = hit;
+                        }
+                    };
+
+                    this.canvas.onmousemove = (e) => {
+                        if(this.dragNode) {
+                            this.dragNode.x = e.clientX;
+                            this.dragNode.y = e.clientY;
+                        }
+                    };
+
+                    this.canvas.onmouseup = () => {
+                        if(this.dragNode) app.data.save();
+                        this.dragNode = null;
+                    };
+
+                    this.canvas.ondblclick = (e) => {
+                        const hit = this.getAt(e.clientX, e.clientY);
+                        if(hit) app.ui.openModal(hit.id);
+                    };
+                },
+                resize() {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                },
+                addNode() {
+                    app.state.nodes.push({
+                        id: Date.now(),
+                        x: window.innerWidth / 2,
+                        y: window.innerHeight / 2,
+                        icon: '🧠',
+                        color: app.state.theme.primary,
+                        connections: []
+                    });
+                    app.data.save();
+                },
+                saveNode() {
+                    const node = app.state.nodes.find(n => n.id === app.ui.editingNode);
+                    node.icon = document.getElementById('node-emoji').value;
+                    node.color = document.getElementById('node-color').value;
+                    app.ui.closeModal();
+                    app.data.save();
+                },
+                deleteNode() {
+                    app.state.nodes = app.state.nodes.filter(n => n.id !== app.ui.editingNode);
+                    app.ui.closeModal();
+                    app.data.save();
+                },
+                getAt(x, y) {
+                    return app.state.nodes.find(n => Math.hypot(n.x - x, n.y - y) < 30);
+                },
+                draw() {
+                    this.ctx.clearRect(0,0,this.canvas.width, this.canvas.height);
+                    
+                    // Draw connections
+                    this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                    this.ctx.lineWidth = 2;
+                    app.state.nodes.forEach(n => {
+                        n.connections.forEach(targetId => {
+                            const target = app.state.nodes.find(t => t.id === targetId);
+                            if(target) {
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(n.x, n.y);
+                                this.ctx.lineTo(target.x, target.y);
+                                this.ctx.stroke();
+                            }
+                        });
+                    });
+
+                    // Draw nodes
+                    app.state.nodes.forEach(n => {
+                        this.ctx.shadowBlur = 15;
+                        this.ctx.shadowColor = n.color;
+                        this.ctx.fillStyle = n.color;
+                        this.ctx.beginPath();
+                        this.ctx.arc(n.x, n.y, 30, 0, Math.PI*2);
+                        this.ctx.fill();
+                        
+                        this.ctx.shadowBlur = 0;
+                        this.ctx.fillStyle = "white";
+                        this.ctx.font = "20px Arial";
+                        this.ctx.textAlign = "center";
+                        this.ctx.fillText(n.icon, n.x, n.y + 7);
+                    });
+                },
+                exportPNG() {
+                    const link = document.createElement('a');
+                    link.download = 'studyos_graph.png';
+                    link.href = this.canvas.toDataURL();
+                    link.click();
+                }
+            },
+
+            /* --- BACKGROUND EFFECTS --- */
+            bg: {
+                ctx: null, canvas: null, particles: [],
+                init() {
+                    this.canvas = document.getElementById('bg-canvas');
+                    this.ctx = this.canvas.getContext('2d');
+                    this.resize();
+                    for(let i=0; i<50; i++) this.particles.push({
+                        x: Math.random()*this.canvas.width, y: Math.random()*this.canvas.height,
+                        v: Math.random()*0.5 + 0.2, r: Math.random()*2
+                    });
+                },
+                resize() {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                },
+                draw() {
+                    const type = app.state.theme.bg;
+                    this.ctx.fillStyle = app.state.theme.bg === 'grid' ? '#0a0a0f' : '#0f172a';
+                    this.ctx.fillRect(0,0,this.canvas.width, this.canvas.height);
+
+                    if(type === 'particles') {
+                        this.ctx.fillStyle = "rgba(255,255,255,0.2)";
+                        this.particles.forEach(p => {
+                            p.y -= p.v;
+                            if(p.y < 0) p.y = this.canvas.height;
+                            this.ctx.beginPath();
+                            this.ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                            this.ctx.fill();
+                        });
+                    } else if(type === 'grid') {
+                        this.ctx.strokeStyle = "rgba(99, 102, 241, 0.1)";
+                        const size = 50;
+                        for(let x=0; x<this.canvas.width; x+=size) {
+                            this.ctx.beginPath(); this.ctx.moveTo(x,0); this.ctx.lineTo(x, this.canvas.height); this.ctx.stroke();
+                        }
+                        for(let y=0; y<this.canvas.height; y+=size) {
+                            this.ctx.beginPath(); this.ctx.moveTo(0,y); this.ctx.lineTo(this.canvas.width, y); this.ctx.stroke();
+                        }
+                    }
+                }
+            },
+
+            /* --- AUDIO & VISUALIZER --- */
+            audio: {
+                ctx: null, analyser: null, source: null, data: null, type: 'none',
+                init() {
+                    const audio = document.getElementById('audio-player');
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.analyser = this.ctx.createAnalyser();
+                    this.source = this.ctx.createMediaElementSource(audio);
+                    this.source.connect(this.analyser);
+                    this.analyser.connect(this.ctx.destination);
+                    this.data = new Uint8Array(this.analyser.frequencyBinCount);
+                },
+                setType(t) { this.type = t; if(this.ctx.state === 'suspended') this.ctx.resume(); },
+                draw() {
+                    if(this.type === 'none' || !this.analyser) return;
+                    this.analyser.getByteFrequencyData(this.data);
+                    const canvas = app.nodes.canvas;
+                    const ctx = app.nodes.ctx;
+                    
+                    if(this.type === 'bars') {
+                        const barWidth = (canvas.width / 64);
+                        ctx.fillStyle = 'rgba(99, 102, 241, 0.2)';
+                        for(let i=0; i<64; i++) {
+                            const h = (this.data[i] / 255) * 150;
+                            ctx.fillRect(i * barWidth, canvas.height - h, barWidth - 2, h);
+                        }
+                    }
+                }
+            },
+
+            /* --- MODULES --- */
+            modules: {
+                pomodoro: {
+                    timer: null, timeLeft: 1500, active: false, mode: 'work',
+                    init() { this.updateDisplay(); },
+                    updateDisplay() {
+                        const m = Math.floor(this.timeLeft / 60);
+                        const s = this.timeLeft % 60;
+                        document.getElementById('pom-time').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                    },
+                    start() {
+                        if(this.active) return;
+                        this.active = true;
+                        this.timer = setInterval(() => {
+                            this.timeLeft--;
+                            this.updateDisplay();
+                            if(this.timeLeft <= 0) {
+                                clearInterval(this.timer);
+                                alert("Czas minął!");
+                                this.reset();
+                            }
+                        }, 1000);
+                    },
+                    pause() { clearInterval(this.timer); this.active = false; },
+                    reset() {
+                        this.pause();
+                        this.timeLeft = document.getElementById('pom-work').value * 60;
+                        this.updateDisplay();
+                    }
+                },
+                radio: {
+                    toggle() {
+                        const a = document.getElementById('audio-player');
+                        const b = document.getElementById('radio-play');
+                        if(a.paused) {
+                            a.play(); b.innerText = "⏸ Pauza";
+                        } else {
+                            a.pause(); b.innerText = "▶ Graj";
+                        }
+                    },
+                    changeStation() {
+                        const a = document.getElementById('audio-player');
+                        a.src = document.getElementById('radio-stations').value;
+                        a.play();
+                        document.getElementById('radio-play').innerText = "⏸ Pauza";
+                    },
+                    setVol(v) { document.getElementById('audio-player').volume = v; }
+                },
+                tasks: {
+                    addTask() {
+                        app.state.tasks.push({id: Date.now(), text: "", done: false});
+                        this.render();
+                        app.data.save();
+                    },
+                    render() {
+                        const container = document.getElementById('task-list');
+                        container.innerHTML = "";
+                        app.state.tasks.forEach(t => {
+                            const div = document.createElement('div');
+                            div.className = "check-item";
+                            div.innerHTML = `
+                                <input type="checkbox" ${t.done ? 'checked' : ''} onchange="app.modules.tasks.toggle(${t.id})">
+                                <input type="text" value="${t.text}" oninput="app.modules.tasks.edit(${t.id}, this.value)" style="border:none; background:transparent">
+                                <span onclick="app.modules.tasks.remove(${t.id})" style="cursor:pointer">✕</span>
+                            `;
+                            container.appendChild(div);
+                        });
+                    },
+                    toggle(id) { 
+                        const t = app.state.tasks.find(x => x.id === id); 
+                        t.done = !t.done; app.data.save(); 
+                    },
+                    edit(id, val) { 
+                        const t = app.state.tasks.find(x => x.id === id); 
+                        t.text = val; app.data.save(); 
+                    },
+                    remove(id) {
+                        app.state.tasks = app.state.tasks.filter(x => x.id !== id);
+                        this.render(); app.data.save();
+                    }
+                },
+                flashcards: {
+                    idx: 0,
+                    update() {
+                        const list = app.state.flashcards;
+                        if(list.length === 0) return;
+                        document.getElementById('fc-front').innerText = list[this.idx].q;
+                        document.getElementById('fc-back').innerText = list[this.idx].a;
+                        document.getElementById('fc-counter').innerText = `${this.idx + 1} / ${list.length}`;
+                    },
+                    next() { this.idx = (this.idx + 1) % app.state.flashcards.length; this.update(); },
+                    prev() { this.idx = (this.idx - 1 + app.state.flashcards.length) % app.state.flashcards.length; this.update(); },
+                    toggleMode() {
+                        const study = document.getElementById('fc-view-study');
+                        const edit = document.getElementById('fc-view-edit');
+                        study.style.display = study.style.display === 'none' ? 'block' : 'none';
+                        edit.style.display = edit.style.display === 'none' ? 'block' : 'none';
+                    },
+                    add() {
+                        const q = document.getElementById('fc-q').value;
+                        const a = document.getElementById('fc-a').value;
+                        if(q && a) {
+                            app.state.flashcards.push({q, a});
+                            app.data.save();
+                            this.update();
+                            document.getElementById('fc-q').value = "";
+                            document.getElementById('fc-a').value = "";
+                        }
+                    }
+                }
+            }
+        };
+
+        // Run App
+        window.onload = () => app.init();
+    </script>
+</body>
+</html>

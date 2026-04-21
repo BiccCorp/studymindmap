@@ -1188,26 +1188,36 @@ function makeNodeDraggable(el, node) {
   let dragging=false, ox=0, oy=0, lastDropTarget=null, didDrag=false;
   let hoverTimer=null;
 
-  el.addEventListener('mouseenter', e => {
-    clearTimeout(hoverTimer); hoverTimer=null;
+el.addEventListener('mouseenter', e => {
+  clearTimeout(hoverTimer);
+  hoverTimer = null;
+  clearTimeout(ctxLeaveTimer);
+  if (!dragging) {
+    showCtx(e, node, el);
+  }
+});
+
+el.addEventListener('mousemove', e => {
+  if (!dragging && nodeCtx.classList.contains('show') && ctxNode===node) {
     clearTimeout(ctxLeaveTimer);
-    if (!dragging) showCtx(e, node, el);
-  });
-  el.addEventListener('mousemove', e => {
-    if (!dragging && nodeCtx.classList.contains('show') && ctxNode===node) {
-      // keep menu roughly near cursor
-      // don't reposition aggressively, just clear hide timer
-      clearTimeout(ctxLeaveTimer);
-    }
-  });
+  }
+});
+
 el.addEventListener('mouseleave', e => {
-  if (e.relatedTarget && (e.relatedTarget === nodeCtx || nodeCtx.contains(e.relatedTarget))) {
+  // Sprawdź czy kursor przechodzi do menu kontekstowego
+  if (nodeCtx.classList.contains('show') && 
+      e.relatedTarget && 
+      (e.relatedTarget === nodeCtx || nodeCtx.contains(e.relatedTarget))) {
+    // Nie ukrywaj menu jeśli kursor przechodzi do menu
+    clearTimeout(ctxLeaveTimer);
     return;
   }
+  
   hoverTimer = setTimeout(() => {
     ctxLeaveTimer = setTimeout(hideCtx, 220);
   }, 80);
 });
+
 
   el.addEventListener('mousedown', e => {
     if (e.button!==0) return;
