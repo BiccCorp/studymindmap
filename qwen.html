@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyOS – Knowledge Graph &amp; Learning Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Syne:wght@400..800&family=Outfit:wght@100..900&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@400..900&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet">
+<!-- STYLES -->
+<style>
+:root {
+  --primary: #6c5ce7;
+  --accent: #00cec9;
+  --bg: #0a0a1a;
+  --surface: rgba(255,255,255,0.06);
+  --surface2: rgba(255,255,255,0.1);
+  --text: #e0e0e0;
+  --text-muted: #888;
+  --radius: 14px;
+  --font: 'Space Grotesk', sans-serif;
+  --anim-speed: 1;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --transition: 0.25s cubic-bezier(.4,0,.2,1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; font-family: var(--font); background: var(--bg); color: var(--text); }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font-family: inherit; color: inherit; background: var(--surface2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 6px 10px; outline: none; transition: border var(--transition); }
+input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
+/* TOOLBAR */
+#toolbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; gap: 4px; padding: 6px 10px;
+  background: rgba(10,10,26,0.85); backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap;
+}
+#toolbar .brand { font-weight: 700; font-size: 1.1rem; margin-right: 10px; background: linear-gradient(135deg,var(--primary),var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+#toolbar button {
+  padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 500;
+  background: var(--surface); transition: background var(--transition); white-space: nowrap;
+}
+#toolbar button:hover { background: var(--surface2); }
+#toolbar .sep { width: 1px; height: 24px; background: rgba(255,255,255,0.1); margin: 0 4px; }
+#toolbar .spacer { flex: 1; }
+.toolbar-group { display: flex; gap: 3px; align-items: center; }
+
+/* CANVAS */
+#graphCanvas {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+}
+#bgCanvas {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
+}
+#musicVisCanvas {
+  position: fixed; bottom: 0; left: 0; width: 100%; height: 120px; z-index: 2; pointer-events: none; opacity: 0.7;
+}
+
+/* PANELS */
+.panel {
+  position: fixed; z-index: 50; background: rgba(16,16,36,0.95); backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius); box-shadow: var(--shadow);
+  display: none; flex-direction: column; overflow: hidden; transition: transform var(--transition), opacity var(--transition);
+  will-change: transform, opacity;
+}
+.panel.active { display: flex; animation: panelIn 0.3s ease forwards; }
+@keyframes panelIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 600; font-size: 0.9rem;
+}
+.panel-header .close-btn { font-size: 1.2rem; opacity: 0.6; transition: opacity var(--transition); }
+.panel-header .close-btn:hover { opacity: 1; }
+.panel-body { padding: 12px; flex: 1; overflow-y: auto; }
+
+/* SPECIFIC PANELS */
+#panel-theme { width: 320px; right: 16px; top: 56px; }
+#panel-pomodoro { width: 280px; right: 16px; top: 56px; }
+#panel-radio { width: 320px; right: 16px; top: 56px; }
+#panel-notes { width: 340px; right: 16px; top: 56px; }
+#panel-checklist { width: 320px; right: 16px; top: 56px; }
+#panel-flashcards { width: 400px; max-width: 90vw; left: 50%; top: 50%; transform: translate(-50%, -50%) !important; max-height: 80vh; }
+#panel-nodeedit { width: 340px; left: 50%; top: 50%; transform: translate(-50%, -50%) !important; }
+#panel-data { width: 300px; right: 16px; top: 56px; }
+#panel-upload { width: 320px; right: 16px; top: 56px; }
+#panel-visbg { width: 300px; right: 16px; top: 56px; }
+
+.theme-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+.theme-row label { font-size: 0.85rem; color: var(--text-muted); }
+.theme-row input[type="color"] { width: 36px; height: 36px; padding: 2px; border-radius: 8px; cursor: pointer; }
+.theme-row select, .theme-row input[type="range"] { flex: 1; }
+.theme-row .color-preview { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); }
+
+/* POMODORO */
+.pomo-display { font-size: 3rem; font-weight: 700; text-align: center; margin: 10px 0; font-variant-numeric: tabular-nums; }
+.pomo-cycle { text-align: center; color: var(--accent); font-size: 0.9rem; margin-bottom: 8px; }
+.pomo-controls { display: flex; justify-content: center; gap: 8px; margin-bottom: 10px; }
+.pomo-controls button { width: 44px; height: 44px; border-radius: 50%; background: var(--surface2); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background var(--transition); }
+.pomo-controls button:hover { background: var(--primary); }
+.pomo-inputs { display: flex; gap: 8px; }
+.pomo-inputs label { font-size: 0.8rem; color: var(--text-muted); }
+.pomo-inputs input { width: 100%; text-align: center; }
+
+/* RADIO */
+.radio-station { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.radio-station button { font-size: 1rem; }
+.radio-station .station-name { flex: 1; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.radio-controls { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.radio-controls button { padding: 8px 14px; border-radius: 8px; background: var(--surface2); font-size: 0.85rem; }
+.radio-controls button:hover { background: var(--primary); }
+.radio-add { display: flex; gap: 6px; margin-top: 8px; }
+.radio-add input { flex: 1; }
+
+/* NOTES */
+#noteTextarea { width: 100%; height: 300px; resize: vertical; font-size: 0.9rem; line-height: 1.6; }
+
+/* CHECKLIST */
+.checklist-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.checklist-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+.checklist-item input[type="text"] { flex: 1; font-size: 0.85rem; background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.1); border-radius: 0; padding: 4px 0; }
+.checklist-item .remove-btn { opacity: 0.4; font-size: 1.1rem; }
+.checklist-item .remove-btn:hover { opacity: 1; color: #e74c3c; }
+#checklistAdd { margin-top: 8px; padding: 6px 12px; border-radius: 8px; background: var(--primary); color: #fff; font-size: 0.9rem; }
+
+/* FLASHCARDS */
+.fc-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.fc-tabs button { flex: 1; padding: 6px; border-radius: 8px; background: var(--surface2); font-size: 0.8rem; }
+.fc-tabs button.active { background: var(--primary); color: #fff; }
+.fc-card-container { perspective: 1000px; margin: 16px auto; width: 100%; max-width: 360px; }
+.fc-card {
+  width: 100%; min-height: 160px; background: var(--surface2); border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  text-align: center; font-size: 1.1rem; cursor: pointer;
+  transition: transform 0.6s cubic-bezier(.4,0,.2,1);
+  transform-style: preserve-3d; position: relative;
+}
+.fc-card.flipped { transform: rotateY(180deg); }
+.fc-card .fc-front, .fc-card .fc-back {
+  position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  padding: 20px; backface-visibility: hidden;
+}
+.fc-card .fc-back { transform: rotateY(180deg); color: var(--accent); }
+.fc-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
+.fc-nav button { padding: 8px 16px; border-radius: 8px; background: var(--surface2); }
+.fc-nav button:hover { background: var(--primary); }
+.fc-counter { font-size: 0.85rem; color: var(--text-muted); }
+.fc-edit-list { max-height: 200px; overflow-y: auto; margin-top: 8px; }
+.fc-edit-item { display: flex; gap: 4px; margin-bottom: 6px; align-items: center; }
+.fc-edit-item input { flex: 1; font-size: 0.8rem; padding: 4px 6px; }
+.fc-edit-item button { font-size: 0.9rem; opacity: 0.5; }
+.fc-edit-item button:hover { opacity: 1; }
+
+/* NODE EDIT */
+.node-edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.node-edit-row label { font-size: 0.85rem; color: var(--text-muted); min-width: 70px; }
+.emoji-picker { display: flex; flex-wrap: wrap; gap: 4px; max-height: 120px; overflow-y: auto; margin-bottom: 8px; }
+.emoji-picker span { font-size: 1.4rem; cursor: pointer; padding: 4px; border-radius: 6px; transition: background var(--transition); }
+.emoji-picker span:hover { background: var(--surface2); }
+.node-edit-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.node-edit-actions button { padding: 6px 14px; border-radius: 8px; font-size: 0.85rem; }
+.btn-primary { background: var(--primary) !important; color: #fff !important; }
+.btn-danger { background: rgba(231,76,60,0.3) !important; color: #e74c3c !important; }
+.btn-danger:hover { background: rgba(231,76,60,0.5) !important; }
+
+/* UPLOAD */
+.drop-zone {
+  border: 2px dashed rgba(255,255,255,0.2); border-radius: var(--radius); padding: 20px;
+  text-align: center; color: var(--text-muted); transition: border-color var(--transition);
+  cursor: pointer; min-height: 100px; display: flex; align-items: center; justify-content: center;
+}
+.drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); }
+.uploaded-icons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.uploaded-icons img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
+
+/* DATA */
+.data-actions { display: flex; flex-direction: column; gap: 8px; }
+.data-actions button { padding: 10px; border-radius: 8px; background: var(--surface2); font-size: 0.9rem; text-align: left; }
+.data-actions button:hover { background: var(--surface2); border: 1px solid var(--primary); }
+
+/* VISUALIZATION BG */
+.vis-options { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.vis-options button { padding: 10px; border-radius: 8px; background: var(--surface2); font-size: 0.8rem; text-align: center; }
+.vis-options button.active { background: var(--primary); color: #fff; }
+
+/* CONTEXT MENU */
+#contextMenu {
+  position: fixed; z-index: 200; background: rgba(16,16,36,0.95); backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 6px; min-width: 160px;
+  display: none; box-shadow: var(--shadow);
+}
+#contextMenu button { display: block; width: 100%; text-align: left; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; }
+#contextMenu button:hover { background: var(--surface2); }
+
+/* MODAL OVERLAY */
+#overlay {
+  position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.4); display: none;
+}
+#overlay.active { display: block; }
+
+/* TOAST */
+#toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 300;
+  background: var(--primary); color: #fff; padding: 10px 20px; border-radius: 10px;
+  font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+#toast.show { opacity: 1; }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  #toolbar { padding: 4px 6px; gap: 2px; }
+  #toolbar button { padding: 4px 8px; font-size: 0.75rem; }
+  .panel { max-width: 92vw !important; left: 4vw !important; right: auto !important; }
+  #panel-flashcards { left: 50% !important; right: auto !important; width: 92vw !important; }
+  #panel-nodeedit { left: 50% !important; right: auto !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- HTML STRUCTURE -->
+<div id="bgCanvas"></div>
+<canvas id="graphCanvas"></canvas>
+<canvas id="musicVisCanvas"></canvas>
+
+<div id="toolbar">
+  <span class="brand">StudyOS</span>
+  <div class="toolbar-group">
+    <button id="btnAddNode" aria-label="Dodaj węzeł">＋ Węzeł</button>
+    <button id="btnFlashcards" aria-label="Fiszki">🃏 Fiszki</button>
+  </div>
+  <div class="sep"></div>
+  <div class="toolbar-group">
+    <button id="btnExportJSON" aria-label="Eksportuj JSON">⬇ JSON</button>
+    <button id="btnImportJSON" aria-label="Importuj JSON">⬆ JSON</button>
+    <button id="btnExportPNG" aria-label="Eksportuj PNG">📷 PNG</button>
+  </div>
+  <div class="sep"></div>
+  <div class="toolbar-group">
+    <button id="btnTheme" aria-label="Motyw">🎨 Motyw</button>
+    <button id="btnVisBg" aria-label="Wizualizacja tła">✨ Tło</button>
+    <button id="btnMusicVis" aria-label="Wizualizacja muzyki">🎵 Muzyka</button>
+    <button id="btnUpload" aria-label="Ikony węzłów">🖼 Ikony</button>
+  </div>
+  <div class="sep"></div>
+  <div class="toolbar-group">
+    <button id="btnTools" aria-label="Narzędzia">🧠</button>
+    <button id="btnPomodoro" aria-label="Pomodoro">⏱</button>
+    <button id="btnRadio" aria-label="Radio">📻</button>
+    <button id="btnNotes" aria-label="Notatnik">📝</button>
+    <button id="btnChecklist" aria-label="Checklista">✅</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="toolbar-group">
+    <button id="btnData" aria-label="Dane">⚠️ Dane</button>
+  </div>
+</div>
+
+<!-- Panels -->
+<div id="overlay"></div>
+<div id="contextMenu"></div>
+
+<div id="panel-theme" class="panel">
+  <div class="panel-header"><span>🎨 Motyw</span><button class="close-btn" data-panel="panel-theme" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body">
+    <div class="theme-row"><label>Kolor główny</label><input type="color" id="themePrimary" value="#6c5ce7"></div>
+    <div class="theme-row"><label>Kolor akcentu</label><input type="color" id="themeAccent" value="#00cec9"></div>
+    <div class="theme-row"><label>Czcionka</label>
+      <select id="themeFont">
+        <option value="'Space Grotesk', sans-serif">Space Grotesk</option>
+        <option value="'Syne', sans-serif">Syne</option>
+        <option value="'Outfit', sans-serif">Outfit</option>
+        <option value="'IBM Plex Sans', sans-serif">IBM Plex Sans</option>
+        <option value="'Playfair Display', serif">Playfair Display</option>
+        <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+      </select>
+    </div>
+    <div class="theme-row"><label>Styl tła</label>
+      <select id="themeBgStyle">
+        <option value="none">Brak</option>
+        <option value="blobs">Bloby</option>
+        <option value="gradient">Ruchomy gradient</option>
+        <option value="grid">Siatka</option>
+        <option value="hex">Sześciokąty</option>
+        <option value="particles">Cząsteczki</option>
+        <option value="waves">Fale</option>
+      </select>
+    </div>
+    <div class="theme-row"><label>Prędkość animacji</label><input type="range" id="themeAnimSpeed" min="0.1" max="3" step="0.1" value="1"></div>
+    <div class="theme-row"><label>Wizualizacja muzyki</label>
+      <select id="themeMusicVis">
+        <option value="none">Wyłączona</option>
+        <option value="bars">Słupki</option>
+        <option value="wave">Fala</option>
+        <option value="circle">Okrąg</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div id="panel-pomodoro" class="panel">
+  <div class="panel-header"><span>⏱ Pomodoro</span><button class="close-btn" data-panel="panel-pomodoro" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body" style="text-align:center;">
+    <div class="pomo-cycle" id="pomoCycle">Cykl 1</div>
+    <div class="pomo-display" id="pomoDisplay">25:00</div>
+    <div class="pomo-controls">
+      <button id="pomoPlay" aria-label="Start">▶</button>
+      <button id="pomoPause" aria-label="Pauza">⏸</button>
+      <button id="pomoReset" aria-label="Reset">↺</button>
+    </div>
+    <div class="pomo-inputs">
+      <div><label>Praca (min)</label><input type="number" id="pomoWork" value="25" min="1" max="120"></div>
+      <div><label>Przerwa (min)</label><input type="number" id="pomoBreak" value="5" min="1" max="60"></div>
+    </div>
+  </div>
+</div>
+
+<div id="panel-radio" class="panel">
+  <div class="panel-header"><span>📻 Radio</span><button class="close-btn" data-panel="panel-radio" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body">
+    <div class="radio-controls">
+      <button id="radioPlay">▶ Graj</button>
+      <button id="radioPause">⏸ Wstrzymane</button>
+      <button id="radioMute">🔈</button>
+      <button id="radioVolUp">🔊</button>
+    </div>
+    <div id="radioStations"></div>
+    <div class="radio-add">
+      <input type="text" id="radioUrl" placeholder="URL stacji...">
+      <input type="text" id="radioName" placeholder="Nazwa..." style="width:80px;">
+      <button id="radioAddBtn">＋</button>
+    </div>
+  </div>
+</div>
+
+<div id="panel-notes" class="panel">
+  <div class="panel-header"><span>📝 Notatnik</span><button class="close-btn" data-panel="panel-notes" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body">
+    <textarea id="noteTextarea" placeholder="Pisz notatki..."></textarea>
+  </div>
+</div>
+
+<div id="panel-checklist" class="panel">
+  <div class="panel-header"><span>✅ Checklista</span><button class="close-btn" data-panel="panel-checklist" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body">
+    <div id="checklistItems"></div>
+    <button id="checklistAdd">＋ Dodaj zadanie</button>
+  </div>
+</div>
+
+<div id="panel-flashcards" class="panel">
+  <div class="panel-header"><span>🃏 Fiszki</span><button class="close-btn" data-panel="panel-flashcards" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body">
+    <div class="fc-tabs">
+      <button class="active" data-fc-tab="learn">📖 Nauka</button>
+      <button data-fc-tab="edit">✏️ Edycja</button>
+    </div>
+    <div id="fcLearn">
+      <div class="fc-card-container">
+        <div class="fc-card" id="fcCard">
+          <div class="fc-front" id="fcFront">Dodaj fiszki w trybie edycji</div>
+          <div class="fc-back" id="fcBack"></div>
+        </div>
+      </div>
+      <div class="fc-nav">
+        <button id="fcPrev">←</button>
+        <span class="fc-counter" id="fcCounter">— 0 / 0</span>
+        <button id="fcNext">→</button>
+        <button id="fcShuffle">🔀</button>
+      </div>
+      <div style="text-align:center;margin-top:8px;"><button id="fcAddBtn" class="btn-primary">＋ Dodaj fiszkę</button></div>
+    </div>
+    <div id="fcEdit" style="display:none;">
+      <div id="fcEditList" class="fc-edit-list"></div>
+      <button id="fcEditAdd" class="btn-primary" style="margin-top:8px;width:100%;">＋ Nowa fiszka</button>
+    </div>
+  </div>
+</div>
+
+<div id="panel-nodeedit" class="panel">
+  <div class="panel-header"><span>✏️ Edytuj węzeł</span><button class="close-btn" data-panel="panel-nodeedit" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body">
+    <div class="node-edit-row"><label>Ikona</label>
+      <div>
+        <div class="emoji-picker" id="emojiPicker"></div>
+        <input type="hidden" id="nodeIcon" value="📌">
+      </div>
+    </div>
+    <div class="node-edit-row"><label>Kolor</label><input type="color" id="nodeColor" value="#6c5ce7"><button id="nodeColorApply" class="btn-primary" style="padding:4px 10px;font-size:0.8rem;">Zastosuj</button></div>
+    <div class="node-edit-row"><label>Nazwa</label><input type="text" id="nodeName" style="flex:1;"></div>
+    <div class="node-edit-actions">
+      <button id="nodeDeleteConn" class="btn-danger">🔗 Usuń połączenia</button>
+      <button id="nodeDelete" class="btn-danger">🗑️ Usuń węzeł</button>
+      <button id="nodeCancel" style="margin-left:auto;">Anuluj</button>
+      <button id="nodeSave" class="btn-primary">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<div id="panel-data" class="panel">
+  <div class="panel-header"><span>⚠️ Dane</span><button class="close-btn" data-panel="panel-data" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body">
+    <div class="data-actions">
+      <button id="dataExportJSON">⬇ Eksportuj JSON</button>
+      <button id="dataImportJSON">⬆ Importuj JSON</button>
+      <button id="dataClear" class="btn-danger" style="text-align:center;">🗑️ Wyczyść dane i przeładuj</button>
+    </div>
+    <input type="file" id="dataFileInput" accept=".json" style="display:none;">
+  </div>
+</div>
+
+<div id="panel-upload" class="panel">
+  <div class="panel-header"><span>🖼 Ikony węzłów</span><button class="close-btn" data-panel="panel-upload" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body">
+    <div class="drop-zone" id="dropZone">📁 Kliknij lub upuść PNG/SVG</div>
+    <input type="file" id="fileInput" accept=".png,.svg" style="display:none;">
+    <div class="uploaded-icons" id="uploadedIcons"></div>
+  </div>
+</div>
+
+<div id="panel-visbg" class="panel">
+  <div class="panel-header"><span>✨ Wizualizacja tła</span><button class="close-btn" data-panel="panel-visbg" aria-label="Zamknij">✕</button></div>
+  <div class="panel-body">
+    <div class="vis-options" id="visOptions"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<input type="file" id="importFileInput" accept=".json" style="display:none;">
+
+<!-- JAVASCRIPT -->
+<script>
+// ============================================================
+// STUDYOS – Complete SPA Application
+// ============================================================
+
+(function() {
+  'use strict';
+
+  // ---- STATE MANAGER ----
+  const AppState = {
+    data: {
+      nodes: [],
+      connections: [],
+      theme: { primary: '#6c5ce7', accent: '#00cec9', font: "'Space Grotesk', sans-serif", bgStyle: 'none', animSpeed: 1, musicVis: 'none' },
+      modules: {
+        pomodoro: { work: 25, breakTime: 5, cycle: 1, phase: 'work', timeLeft: 1500, running: false },
+        notes: '',
+        checklist: [],
+        flashcards: [],
+        radio: { stations: [], volume: 0.7, muted: false }
+      },
+      uploadedIcons: [],
+      nodeIcons: []
+    },
+    _subscribers: [],
+    subscribe(fn) { this._subscribers.push(fn); },
+    notify() { this._subscribers.forEach(fn => fn(this.data)); },
+    save() {
+      try { localStorage.setItem('studyos', JSON.stringify(this.data)); } catch(e) { console.warn('Save failed', e); }
+    },
+    load() {
+      try {
+        const s = localStorage.getItem('studyos');
+        if (s) {
+          const parsed = JSON.parse(s);
+          this.data = { ...this.data, ...parsed, theme: { ...this.data.theme, ...(parsed.theme || {}) }, modules: { ...this.data.modules, ...(parsed.modules || {}) } };
+        }
+      } catch(e) { console.warn('Load failed', e); }
+    }
+  };
+
+  AppState.load();
+
+  // ---- UTILS ----
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  // ---- DOM REFS ----
+  const $ = id => document.getElementById(id);
+  const graphCanvas = $('graphCanvas');
+  const bgCanvasEl = document.createElement('canvas');
+  bgCanvasEl.id = 'bgCanvasEl';
+  bgCanvasEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;';
+  document.body.insertBefore(bgCanvasEl, graphCanvas);
+  const bgCtx = bgCanvasEl.getContext('2d');
+  const graphCtx = graphCanvas.getContext('2d');
+  const musicCanvas = $('musicVisCanvas');
+  const musicCtx = musicCanvas.getContext('2d');
+
+  let W, H, dpr;
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth; H = window.innerHeight;
+    [graphCanvas, bgCanvasEl, musicCanvas].forEach(c => {
+      c.width = W * dpr; c.height = H * dpr;
+      c.style.width = W + 'px'; c.style.height = (c === musicCanvas ? 120 : H) + 'px';
+      c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+    });
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---- THEME ----
+  const theme = AppState.data.theme;
+  function applyTheme() {
+    document.documentElement.style.setProperty('--primary', theme.primary);
+    document.documentElement.style.setProperty('--accent', theme.accent);
+    document.documentElement.style.setProperty('--font', theme.font);
+    document.documentElement.style.setProperty('--anim-speed', theme.animSpeed);
+    $('themePrimary').value = theme.primary;
+    $('themeAccent').value = theme.accent;
+    $('themeFont').value = theme.font;
+    $('themeBgStyle').value = theme.bgStyle;
+    $('themeAnimSpeed').value = theme.animSpeed;
+    $('themeMusicVis').value = theme.musicVis;
+  }
+  applyTheme();
+
+  $('themePrimary').addEventListener('input', e => { theme.primary = e.target.value; applyTheme(); AppState.save(); });
+  $('themeAccent').addEventListener('input', e => { theme.accent = e.target.value; applyTheme(); AppState.save(); });
+  $('themeFont').addEventListener('change', e => { theme.font = e.target.value; applyTheme(); AppState.save(); });
+  $('themeBgStyle').addEventListener('change', e => { theme.bgStyle = e.target.value; AppState.save(); });
+  $('themeAnimSpeed').addEventListener('input', e => { theme.animSpeed = parseFloat(e.target.value); applyTheme(); AppState.save(); });
+  $('themeMusicVis').addEventListener('change', e => { theme.musicVis = e.target.value; AppState.save(); });
+
+  // ---- PANELS ----
+  function openPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    $('overlay').classList.add('active');
+    $(id).classList.add('active');
+  }
+  function closePanels() {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    $('overlay').classList.remove('active');
+    $('contextMenu').style.display = 'none';
+  }
+  document.querySelectorAll('.close-btn').forEach(b => b.addEventListener('click', closePanels));
+  $('overlay').addEventListener('click', closePanels);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanels(); });
+
+  // Toolbar buttons
+  $('btnTheme').onclick = () => openPanel('panel-theme');
+  $('btnVisBg').onclick = () => { openPanel('panel-visbg'); renderVisOptions(); };
+  $('btnPomodoro').onclick = () => openPanel('panel-pomodoro');
+  $('btnRadio').onclick = () => openPanel('panel-radio');
+  $('btnNotes').onclick = () => openPanel('panel-notes');
+  $('btnChecklist').onclick = () => openPanel('panel-checklist');
+  $('btnFlashcards').onclick = () => openPanel('panel-flashcards');
+  $('btnData').onclick = () => openPanel('panel-data');
+  $('btnUpload').onclick = () => { openPanel('panel-upload'); renderUploadedIcons(); };
+  $('btnTools').onclick = () => toast('🧠🛠️⚙️ – Narzędzia w pasku!');
+
+  // ---- VISUALIZATION OPTIONS ----
+  const visStyles = ['none', 'blobs', 'gradient', 'grid', 'hex', 'particles', 'waves'];
+  const visLabels = { none: 'Brak', blobs: 'Bloby', gradient: 'Gradient', grid: 'Siatka', hex: 'Sześciokąty', particles: 'Cząsteczki', waves: 'Fale' };
+  function renderVisOptions() {
+    const cont = $('visOptions');
+    cont.innerHTML = '';
+    visStyles.forEach(v => {
+      const btn = document.createElement('button');
+      btn.textContent = visLabels[v];
+      if (v === theme.bgStyle) btn.classList.add('active');
+      btn.onclick = () => { theme.bgStyle = v; applyTheme(); AppState.save(); renderVisOptions(); toast('Tło: ' + visLabels[v]); };
+      cont.appendChild(btn);
+    });
+  }
+
+  // ---- BACKGROUND VISUALIZATION ----
+  let bgTime = 0;
+  const particles = Array.from({ length: 80 }, () => ({ x: Math.random() * 2000, y: Math.random() * 2000, vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2, r: Math.random() * 3 + 1 }));
+
+  function drawBackground(dt) {
+    bgCtx.clearRect(0, 0, W, H);
+    const spd = theme.animSpeed;
+    bgTime += dt * spd * 0.001;
+
+    switch (theme.bgStyle) {
+      case 'blobs': {
+        for (let i = 0; i < 3; i++) {
+          const grd = bgCtx.createRadialGradient(
+            W * (0.3 + 0.4 * Math.sin(bgTime * 0.3 + i * 2)), H * (0.3 + 0.4 * Math.cos(bgTime * 0.2 + i * 3)),
+            0, W * 0.3, H * 0.3, W * 0.6
+          );
+          grd.addColorStop(0, (i === 0 ? theme.primary : theme.accent) + '40');
+          grd.addColorStop(1, 'transparent');
+          bgCtx.fillStyle = grd;
+          bgCtx.fillRect(0, 0, W, H);
+        }
+        break;
+      }
+      case 'gradient': {
+        const grd = bgCtx.createLinearGradient(W * (0.5 + 0.5 * Math.sin(bgTime * 0.2)), 0, W * (0.5 + 0.5 * Math.cos(bgTime * 0.3)), H);
+        grd.addColorStop(0, theme.primary + '20');
+        grd.addColorStop(0.5, theme.accent + '15');
+        grd.addColorStop(1, theme.primary + '20');
+        bgCtx.fillStyle = grd;
+        bgCtx.fillRect(0, 0, W, H);
+        break;
+      }
+      case 'grid': {
+        bgCtx.strokeStyle = theme.primary + '15';
+        bgCtx.lineWidth = 1;
+        const step = 50;
+        const offX = (bgTime * 20 * spd) % step;
+        const offY = (bgTime * 15 * spd) % step;
+        for (let x = -step + offX; x < W + step; x += step) {
+          bgCtx.beginPath(); bgCtx.moveTo(x, 0); bgCtx.lineTo(x, H); bgCtx.stroke();
+        }
+        for (let y = -step + offY; y < H + step; y += step) {
+          bgCtx.beginPath(); bgCtx.moveTo(0, y); bgCtx.lineTo(W, y); bgCtx.stroke();
+        }
+        break;
+      }
+      case 'hex': {
+        bgCtx.strokeStyle = theme.accent + '10';
+        bgCtx.lineWidth = 1;
+        const size = 30;
+        const h = size * Math.sqrt(3);
+        const offX = (bgTime * 10 * spd) % (size * 3);
+        for (let row = -1; row < H / h + 1; row++) {
+          for (let col = -1; col < W / (size * 3) + 1; col++) {
+            const cx = col * size * 3 + offX + (row % 2 ? size * 1.5 : 0);
+            const cy = row * h * 0.5;
+            bgCtx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const a = Math.PI / 3 * i - Math.PI / 6;
+              const px = cx + size * Math.cos(a);
+              const py = cy + size * Math.sin(a);
+              i === 0 ? bgCtx.moveTo(px, py) : bgCtx.lineTo(px, py);
+            }
+            bgCtx.closePath(); bgCtx.stroke();
+          }
+        }
+        break;
+      }
+      case 'particles': {
+        particles.forEach(p => {
+          p.x += p.vx * spd; p.y += p.vy * spd;
+          if (p.x < 0 || p.x > W) p.vx *= -1;
+          if (p.y < 0 || p.y > H) p.vy *= -1;
+          bgCtx.beginPath();
+          bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          bgCtx.fillStyle = theme.primary + '60';
+          bgCtx.fill();
+        });
+        // connections
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 100) {
+              bgCtx.beginPath();
+              bgCtx.moveTo(particles[i].x, particles[i].y);
+              bgCtx.lineTo(particles[j].x, particles[j].y);
+              bgCtx.strokeStyle = theme.primary + Math.floor((1 - dist / 100) * 30).toString(16).padStart(2, '0');
+              bgCtx.lineWidth = 0.5;
+              bgCtx.stroke();
+            }
+          }
+        }
+        break;
+      }
+      case 'waves': {
+        bgCtx.strokeStyle = theme.accent + '30';
+        bgCtx.lineWidth = 2;
+        for (let w = 0; w < 3; w++) {
+          bgCtx.beginPath();
+          for (let x = 0; x < W; x += 4) {
+            const y = H * 0.5 + Math.sin(x * 0.01 + bgTime * (1 + w * 0.3) * spd) * (40 + w * 20) + Math.cos(x * 0.005 + bgTime * 0.7 * spd) * 20;
+            x === 0 ? bgCtx.moveTo(x, y) : bgCtx.lineTo(x, y);
+          }
+          bgCtx.stroke();
+        }
+        break;
+      }
+    }
+  }
+
+  // ---- MUSIC VISUALIZATION (Web Audio API) ----
+  let audioCtx, analyser, dataArray, audioElement, musicVisActive = false;
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    musicVisActive = true;
+  }
+
+  function drawMusicVis() {
+    if (theme.musicVis === 'none' || !musicVisActive || !analyser) {
+      musicCtx.clearRect(0, 0, W, 120);
+      return;
+    }
+    analyser.getByteFrequencyData(dataArray);
+    musicCtx.clearRect(0, 0, W, 120);
+    const bufLen = analyser.frequencyBinCount;
+    const barW = W / bufLen * 2.5;
+
+    if (theme.musicVis === 'bars') {
+      for (let i = 0; i < bufLen; i++) {
+        const barH = (dataArray[i] / 255) * 100;
+        const x = i * barW;
+        musicCtx.fillStyle = i % 2 === 0 ? theme.primary + '90' : theme.accent + '90';
+        musicCtx.fillRect(x, 120 - barH, barW - 1, barH);
+      }
+    } else if (theme.musicVis === 'wave') {
+      musicCtx.beginPath();
+      musicCtx.strokeStyle = theme.accent + '80';
+      musicCtx.lineWidth = 2;
+      for (let i = 0; i < bufLen; i++) {
+        const x = (i / bufLen) * W;
+        const y = 60 + (dataArray[i] / 255 - 0.5) * 80;
+        i === 0 ? musicCtx.moveTo(x, y) : musicCtx.lineTo(x, y);
+      }
+      musicCtx.stroke();
+    } else if (theme.musicVis === 'circle') {
+      const cx = W / 2, cy = 60;
+      musicCtx.beginPath();
+      for (let i = 0; i < bufLen; i++) {
+        const a = (i / bufLen) * Math.PI * 2;
+        const r = 30 + (dataArray[i] / 255) * 40;
+        const x = cx + Math.cos(a) * r;
+        const y = cy + Math.sin(a) * r;
+        i === 0 ? musicCtx.moveTo(x, y) : musicCtx.lineTo(x, y);
+      }
+      musicCtx.closePath();
+      musicCtx.strokeStyle = theme.primary + '80';
+      musicCtx.lineWidth = 2;
+      musicCtx.stroke();
+    }
+  }
+
+  // ---- KNOWLEDGE GRAPH (Canvas) ----
+  let nodes = AppState.data.nodes || [];
+  let connections = AppState.data.connections || [];
+  let dragging = null, dragOff = { x: 0, y: 0 };
+  let connecting = null, mousePos = { x: 0, y: 0 };
+  let selectedNode = null;
+  const NODE_R = 30;
+  const emojis = '📌📚🧠💡🔬📐🎨🎯🗂️📊🔗🌐📖✏️📝💻🎓🏆🔑🌟⚡🎵📷🗓️📎🔍💼🧪📡🧬'.split(/(?=\p{Emoji})/u).filter(e => e.trim()).slice(0, 30);
+  if (emojis.length < 20) {
+    // Fallback emoji list
+    const emojiList = ['📌','📚','🧠','💡','🔬','📐','🎨','🎯','🗂️','📊','🔗','🌐','📖','✏️','📝','💻','🎓','🏆','🔑','🌟','⚡','🎵','📷','🗓️','📎','🔍','💼','🧪','📡','🧬'];
+    emojis.length = 0;
+    emojis.push(...emojiList);
+  }
+
+  function drawGraph() {
+    graphCtx.clearRect(0, 0, W, H);
+    // connections
+    connections.forEach(conn => {
+      const a = nodes.find(n => n.id === conn.from);
+      const b = nodes.find(n => n.id === conn.to);
+      if (!a || !b) return;
+      graphCtx.beginPath();
+      graphCtx.moveTo(a.x, a.y);
+      graphCtx.lineTo(b.x, b.y);
+      graphCtx.strokeStyle = theme.primary + '50';
+      graphCtx.lineWidth = 2;
+      graphCtx.stroke();
+    });
+    // temp connection line
+    if (connecting) {
+      graphCtx.beginPath();
+      graphCtx.moveTo(connecting.x, connecting.y);
+      graphCtx.lineTo(mousePos.x, mousePos.y);
+      graphCtx.strokeStyle = theme.accent + '80';
+      graphCtx.lineWidth = 2;
+      graphCtx.setLineDash([5, 5]);
+      graphCtx.stroke();
+      graphCtx.setLineDash([]);
+    }
+    // nodes
+    nodes.forEach(n => {
+      // shadow
+      graphCtx.beginPath();
+      graphCtx.arc(n.x, n.y + 3, NODE_R, 0, Math.PI * 2);
+      graphCtx.fillStyle = 'rgba(0,0,0,0.3)';
+      graphCtx.fill();
+      // circle
+      graphCtx.beginPath();
+      graphCtx.arc(n.x, n.y, NODE_R, 0, Math.PI * 2);
+      graphCtx.fillStyle = n.color || theme.primary;
+      graphCtx.fill();
+      graphCtx.strokeStyle = n === selectedNode ? theme.accent : 'rgba(255,255,255,0.2)';
+      graphCtx.lineWidth = n === selectedNode ? 3 : 1;
+      graphCtx.stroke();
+      // icon
+      graphCtx.font = '20px serif';
+      graphCtx.textAlign = 'center';
+      graphCtx.textBaseline = 'middle';
+      const icon = n.customIcon ? `<img>` : (n.icon || '📌');
+      if (n.customIcon) {
+        const img = new Image();
+        img.src = n.customIcon;
+        graphCtx.save();
+        graphCtx.beginPath();
+        graphCtx.arc(n.x, n.y, NODE_R - 4, 0, Math.PI * 2);
+        graphCtx.clip();
+        graphCtx.drawImage(img, n.x - 20, n.y - 20, 40, 40);
+        graphCtx.restore();
+      } else {
+        graphCtx.fillText(icon, n.x, n.y);
+      }
+      // label
+      if (n.name) {
+        graphCtx.font = '11px ' + theme.font;
+        graphCtx.fillStyle = 'rgba(255,255,255,0.8)';
+        graphCtx.fillText(n.name, n.x, n.y + NODE_R + 14);
+      }
+      // connection handles (small circles)
+      if (n === selectedNode) {
+        const handleAngle = Math.atan2(mousePos.y - n.y, mousePos.x - n.x);
+        const hx = n.x + Math.cos(handleAngle) * (NODE_R + 8);
+        const hy = n.y + Math.sin(handleAngle) * (NODE_R + 8);
+        graphCtx.beginPath();
+        graphCtx.arc(hx, hy, 6, 0, Math.PI * 2);
+        graphCtx.fillStyle = theme.accent;
+        graphCtx.fill();
+      }
+    });
+  }
+
+  function hitNode(mx, my) {
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      const dx = mx - n.x, dy = my - n.y;
+      if (dx * dx + dy * dy < (NODE_R + 10) * (NODE_R + 10)) return n;
+    }
+    return null;
+  }
+
+  function addNode(x, y) {
+    const n = { id: uid(), x: x || W / 2 + (Math.random() - 0.5) * 200, y: y || H / 2 + (Math.random() - 0.5) * 200, icon: '📌', color: theme.primary, name: '', connections: [], customIcon: null };
+    nodes.push(n);
+    AppState.data.nodes = nodes;
+    AppState.data.connections = connections;
+    AppState.save();
+    toast('Dodano węzeł');
+  }
+
+  function openNodeEdit(node) {
+    selectedNode = node;
+    $('nodeIcon').value = node.icon || '📌';
+    $('nodeColor').value = node.color || theme.primary;
+    $('nodeName').value = node.name || '';
+    // emoji picker
+    const ep = $('emojiPicker');
+    ep.innerHTML = '';
+    emojis.forEach(e => {
+      const s = document.createElement('span');
+      s.textContent = e;
+      if (e === node.icon) s.style.background = 'var(--surface2)';
+      s.onclick = () => { $('nodeIcon').value = e; ep.querySelectorAll('span').forEach(x => x.style.background = ''); s.style.background = 'var(--surface2)'; };
+      ep.appendChild(s);
+    });
+    openPanel('panel-nodeedit');
+  }
+
+  $('btnAddNode').onclick = () => addNode();
+
+  graphCanvas.addEventListener('mousedown', e => {
+    const rect = graphCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const node = hitNode(mx, my);
+    if (node) {
+      if (e.shiftKey) {
+        // start connecting
+        connecting = { x: node.x, y: node.y, fromId: node.id };
+      } else {
+        dragging = node;
+        dragOff = { x: mx - node.x, y: my - node.y };
+        selectedNode = node;
+      }
+    } else {
+      selectedNode = null;
+      // double click to add
+      if (e.detail === 2) addNode(mx, my);
+    }
+  });
+
+  graphCanvas.addEventListener('mousemove', e => {
+    const rect = graphCanvas.getBoundingClientRect();
+    mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    if (dragging) {
+      dragging.x = mousePos.x - dragOff.x;
+      dragging.y = mousePos.y - dragOff.y;
+    }
+  });
+
+  graphCanvas.addEventListener('mouseup', e => {
+    const rect = graphCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    if (connecting) {
+      const target = hitNode(mx, my);
+      if (target && target.id !== connecting.fromId) {
+        // check if connection exists
+        const exists = connections.some(c => (c.from === connecting.fromId && c.to === target.id) || (c.from === target.id && c.to === connecting.fromId));
+        if (!exists) {
+          connections.push({ from: connecting.fromId, to: target.id });
+          AppState.data.connections = connections;
+          AppState.save();
+          toast('Połączono węzły');
+        }
+      }
+      connecting = null;
+    }
+    dragging = null;
+    if (!connecting) AppState.save();
+  });
+
+  graphCanvas.addEventListener('dblclick', e => {
+    const rect = graphCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const node = hitNode(mx, my);
+    if (node) openNodeEdit(node);
+  });
+
+  // Touch support
+  graphCanvas.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    const rect = graphCanvas.getBoundingClientRect();
+    const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+    const node = hitNode(mx, my);
+    if (node) { dragging = node; dragOff = { x: mx - node.x, y: my - node.y }; selectedNode = node; }
+    else selectedNode = null;
+  }, { passive: true });
+  graphCanvas.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    const rect = graphCanvas.getBoundingClientRect();
+    mousePos = { x: t.clientX - rect.left, y: t.clientY - rect.top };
+    if (dragging) { dragging.x = mousePos.x - dragOff.x; dragging.y = mousePos.y - dragOff.y; }
+  }, { passive: true });
+  graphCanvas.addEventListener('touchend', () => { dragging = null; AppState.save(); });
+
+  // Right-click context menu
+  graphCanvas.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const rect = graphCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const node = hitNode(mx, my);
+    const cm = $('contextMenu');
+    cm.innerHTML = '';
+    if (node) {
+      const btns = [
+        { text: '✏️ Edytuj', fn: () => openNodeEdit(node) },
+        { text: '🔗 Usuń połączenia', fn: () => { connections = connections.filter(c => c.from !== node.id && c.to !== node.id); AppState.data.connections = connections; AppState.save(); toast('Połączenia usunięte'); } },
+        { text: '🗑️ Usuń węzeł', fn: () => { nodes = nodes.filter(n => n.id !== node.id); connections = connections.filter(c => c.from !== node.id && c.to !== node.id); selectedNode = null; AppState.data.nodes = nodes; AppState.data.connections = connections; AppState.save(); toast('Węzeł usunięty'); } }
+      ];
+      btns.forEach(b => {
+        const btn = document.createElement('button');
+        btn.textContent = b.text;
+        btn.onclick = () => { b.fn(); cm.style.display = 'none'; };
+        cm.appendChild(btn);
+      });
+    } else {
+      const btn = document.createElement('button');
+      btn.textContent = '＋ Dodaj węzeł';
+      btn.onclick = () => { addNode(mx, my); cm.style.display = 'none'; };
+      cm.appendChild(btn);
+    }
+    cm.style.display = 'block';
+    cm.style.left = e.clientX + 'px';
+    cm.style.top = e.clientY + 'px';
+  });
+
+  // Node edit panel actions
+  $('nodeSave').onclick = () => {
+    if (!selectedNode) return;
+    selectedNode.icon = $('nodeIcon').value;
+    selectedNode.color = $('nodeColor').value;
+    selectedNode.name = $('nodeName').value;
+    AppState.data.nodes = nodes;
+    AppState.save();
+    closePanels();
+    toast('Zapisano węzeł');
+  };
+  $('nodeColorApply').onclick = () => {
+    if (selectedNode) { selectedNode.color = $('nodeColor').value; AppState.save(); }
+  };
+  $('nodeDelete').onclick = () => {
+    if (!selectedNode) return;
+    nodes = nodes.filter(n => n.id !== selectedNode.id);
+    connections = connections.filter(c => c.from !== selectedNode.id && c.to !== selectedNode.id);
+    selectedNode = null;
+    AppState.data.nodes = nodes;
+    AppState.data.connections = connections;
+    AppState.save();
+    closePanels();
+    toast('Usunięto węzeł');
+  };
+  $('nodeDeleteConn').onclick = () => {
+    if (!selectedNode) return;
+    connections = connections.filter(c => c.from !== selectedNode.id && c.to !== selectedNode.id);
+    AppState.data.connections = connections;
+    AppState.save();
+    toast('Połączenia usunięte');
+  };
+  $('nodeCancel').onclick = closePanels;
+
+  // ---- PNG EXPORT ----
+  $('btnExportPNG').onclick = () => {
+    // Draw bg + graph to a temp canvas
+    const tmp = document.createElement('canvas');
+    tmp.width = W * dpr; tmp.height = H * dpr;
+    const ctx = tmp.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // bg
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    ctx.fillRect(0, 0, W, H);
+    // redraw graph
+    drawGraphToCtx(ctx);
+    const link = document.createElement('a');
+    link.download = 'studyos-graph.png';
+    link.href = tmp.toDataURL('image/png');
+    link.click();
+    toast('PNG wyeksportowany');
+  };
+
+  function drawGraphToCtx(ctx) {
+    connections.forEach(conn => {
+      const a = nodes.find(n => n.id === conn.from);
+      const b = nodes.find(n => n.id === conn.to);
+      if (!a || !b) return;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = theme.primary + '50'; ctx.lineWidth = 2; ctx.stroke();
+    });
+    nodes.forEach(n => {
+      ctx.beginPath(); ctx.arc(n.x, n.y + 3, NODE_R, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(n.x, n.y, NODE_R, 0, Math.PI * 2);
+      ctx.fillStyle = n.color || theme.primary; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.font = '20px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(n.icon || '📌', n.x, n.y);
+      if (n.name) { ctx.font = '11px ' + theme.font; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillText(n.name, n.x, n.y + NODE_R + 14); }
+    });
+  }
+
+  // ---- JSON EXPORT/IMPORT ----
+  function exportJSON() {
+    const data = {
+      nodes: AppState.data.nodes,
+      connections: AppState.data.connections,
+      theme: AppState.data.theme,
+      modules: AppState.data.modules,
+      uploadedIcons: AppState.data.uploadedIcons || [],
+      exportDate: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.download = 'studyos-export.json';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast('JSON wyeksportowany');
+  }
+  function importJSON(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.nodes) { AppState.data.nodes = data.nodes; nodes = data.nodes; }
+        if (data.connections) { AppState.data.connections = data.connections; connections = data.connections; }
+        if (data.theme) { Object.assign(AppState.data.theme, data.theme); applyTheme(); }
+        if (data.modules) { Object.assign(AppState.data.modules, data.modules); }
+        if (data.uploadedIcons) AppState.data.uploadedIcons = data.uploadedIcons;
+        AppState.save();
+        loadModulesFromState();
+        toast('Dane zaimportowane');
+      } catch (err) { toast('Błąd importu: ' + err.message); }
+    };
+    reader.readAsText(file);
+  }
+  $('btnExportJSON').onclick = exportJSON;
+  $('dataExportJSON').onclick = exportJSON;
+  $('btnImportJSON').onclick = () => $('importFileInput').click();
+  $('dataImportJSON').onclick = () => $('dataFileInput').click();
+  $('importFileInput').onchange = e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; };
+  $('dataFileInput').onchange = e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; };
+  $('dataClear').onclick = () => { if (confirm('🗑️ Czy na pewno chcesz wyczyśćić wszystkie dane i przeładować?')) { localStorage.clear(); location.reload(); } };
+
+  // ---- UPLOAD ICONS ----
+  const dropZone = $('dropZone');
+  const fileInput = $('fileInput');
+  dropZone.onclick = () => fileInput.click();
+  dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('dragover'); };
+  dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+  dropZone.ondrop = e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    handleFileUpload(e.dataTransfer.files[0]);
+  };
+  fileInput.onchange = e => { if (e.target.files[0]) handleFileUpload(e.target.files[0]); };
+
+  function handleFileUpload(file) {
+    if (!file || !file.type.match(/image\/(png|svg|svg\+xml)/)) { toast('Tylko PNG/SVG'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      AppState.data.uploadedIcons = AppState.data.uploadedIcons || [];
+      AppState.data.uploadedIcons.push({ id: uid(), data: e.target.result, name: file.name });
+      AppState.save();
+      renderUploadedIcons();
+      toast('Ikona dodana');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function renderUploadedIcons() {
+    const cont = $('uploadedIcons');
+    cont.innerHTML = '';
+    (AppState.data.uploadedIcons || []).forEach(ic => {
+      const img = document.createElement('img');
+      img.src = ic.data;
+      img.title = ic.name;
+      img.onclick = () => {
+        if (selectedNode) {
+          selectedNode.customIcon = ic.data;
+          selectedNode.icon = '';
+          AppState.save();
+          toast('Ikona przypisana');
+        } else toast('Najpierw wybierz węzeł');
+      };
+      cont.appendChild(img);
+    });
+  }
+
+  // ---- POMODORO ----
+  let pomoTimer = null;
+  const pomo = AppState.data.modules.pomodoro;
+  function updatePomoDisplay() {
+    const m = Math.floor(pomo.timeLeft / 60).toString().padStart(2, '0');
+    const s = (pomo.timeLeft % 60).toString().padStart(2, '0');
+    $('pomoDisplay').textContent = m + ':' + s;
+    $('pomoCycle').textContent = `Cykl ${pomo.cycle} – ${pomo.phase === 'work' ? 'Praca' : 'Przerwa'}`;
+    $('pomoWork').value = pomo.work;
+    $('pomoBreak').value = pomo.breakTime;
+  }
+  updatePomoDisplay();
+
+  $('pomoPlay').onclick = () => {
+    if (pomo.running) return;
+    pomo.running = true;
+    initAudio();
+    pomoTimer = setInterval(() => {
+      pomo.timeLeft--;
+      if (pomo.timeLeft <= 0) {
+        // phase change
+        if (pomo.phase === 'work') {
+          pomo.phase = 'break';
+          pomo.timeLeft = pomo.breakTime * 60;
+          // beep
+          playBeep(600, 0.3);
+          toast('🎉 Przerwa!');
+        } else {
+          pomo.phase = 'work';
+          pomo.cycle++;
+          pomo.timeLeft = pomo.work * 60;
+          playBeep(800, 0.3);
+          toast('💪 Czas pracy!');
+        }
+      }
+      updatePomoDisplay();
+      AppState.save();
+    }, 1000);
+  };
+  $('pomoPause').onclick = () => {
+    pomo.running = false;
+    clearInterval(pomoTimer);
+    AppState.save();
+  };
+  $('pomoReset').onclick = () => {
+    pomo.running = false;
+    clearInterval(pomoTimer);
+    pomo.timeLeft = pomo.work * 60;
+    pomo.phase = 'work';
+    pomo.cycle = 1;
+    updatePomoDisplay();
+    AppState.save();
+  };
+  $('pomoWork').addEventListener('change', e => { pomo.work = parseInt(e.target.value) || 25; pomo.timeLeft = pomo.work * 60; updatePomoDisplay(); AppState.save(); });
+  $('pomoBreak').addEventListener('change', e => { pomo.breakTime = parseInt(e.target.value) || 5; if (pomo.phase === 'break') pomo.timeLeft = pomo.breakTime * 60; updatePomoDisplay(); AppState.save(); });
+
+  function playBeep(freq, dur) {
+    if (!audioCtx) initAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    gain.gain.value = 0.3;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.stop(audioCtx.currentTime + dur);
+  }
+
+  // ---- RADIO ----
+  const radio = AppState.data.modules.radio;
+  let radioAudio = null;
+
+  function renderRadioStations() {
+    const cont = $('radioStations');
+    cont.innerHTML = '';
+    (radio.stations || []).forEach((s, i) => {
+      const div = document.createElement('div');
+      div.className = 'radio-station';
+      div.innerHTML = `<button data-rplay="${i}" aria-label="Odtwórz">▶</button><span class="station-name">${s.name || s.url}</span><button data-rdel="${i}" aria-label="Usuń">✕</button>`;
+      cont.appendChild(div);
+    });
+    cont.querySelectorAll('[data-rplay]').forEach(b => b.onclick = () => playRadioStation(parseInt(b.dataset.rplay)));
+    cont.querySelectorAll('[data-rdel]').forEach(b => b.onclick = () => {
+      radio.stations.splice(parseInt(b.dataset.rdel), 1);
+      AppState.data.modules.radio = radio;
+      AppState.save();
+      renderRadioStations();
+    });
+  }
+  renderRadioStations();
+
+  function playRadioStation(idx) {
+    const s = radio.stations[idx];
+    if (!s) return;
+    if (radioAudio) { radioAudio.pause(); radioAudio.src = ''; }
+    radioAudio = new Audio(s.url);
+    radioAudio.crossOrigin = 'anonymous';
+    radioAudio.volume = radio.volume;
+    radioAudio.play().catch(e => toast('Błąd odtwarzania: ' + e.message));
+    // connect to analyser
+    if (!audioCtx) initAudio();
+    try {
+      const source = audioCtx.createMediaElementSource(radioAudio);
+      source.connect(analyser);
+      analyser.connect(audioCtx.destination);
+    } catch(e) { /* already connected */ }
+    toast('📻 ' + (s.name || s.url));
+  }
+
+  $('radioPlay').onclick = () => { if (radioAudio) radioAudio.play().catch(() => toast('Brak stacji')); };
+  $('radioPause').onclick = () => { if (radioAudio) radioAudio.pause(); };
+  $('radioMute').onclick = () => { radio.muted = !radio.muted; if (radioAudio) radioAudio.muted = radio.muted; $('radioMute').textContent = radio.muted ? '🔇' : '🔈'; };
+  $('radioVolUp').onclick = () => { radio.volume = Math.min(1, radio.volume + 0.1); if (radioAudio) radioAudio.volume = radio.volume; };
+  $('radioAddBtn').onclick = () => {
+    const url = $('radioUrl').value.trim();
+    const name = $('radioName').value.trim();
+    if (!url) return toast('Podaj URL stacji');
+    radio.stations.push({ id: uid(), url, name: name || url });
+    AppState.data.modules.radio = radio;
+    AppState.save();
+    renderRadioStations();
+    $('radioUrl').value = ''; $('radioName').value = '';
+    toast('Stacja dodana');
+  };
+
+  // ---- NOTES ----
+  const notesEl = $('noteTextarea');
+  notesEl.value = AppState.data.modules.notes || '';
+  let notesTimer = null;
+  notesEl.addEventListener('input', () => {
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(() => {
+      AppState.data.modules.notes = notesEl.value;
+      AppState.save();
+    }, 500);
+  });
+
+  // ---- CHECKLIST ----
+  let checklist = AppState.data.modules.checklist || [];
+  function renderChecklist() {
+    const cont = $('checklistItems');
+    cont.innerHTML = '';
+    checklist.forEach((item, i) => {
+      const div = document.createElement('div');
+      div.className = 'checklist-item';
+      div.innerHTML = `<input type="checkbox" ${item.done ? 'checked' : ''}><input type="text" value="${item.text.replace(/"/g, '&quot;')}" placeholder="Zadanie..."><button class="remove-btn" data-clrem="${i}" aria-label="Usuń">✕</button>`;
+      cont.appendChild(div);
+      const cb = div.querySelector('input[type="checkbox"]');
+      cb.onchange = () => { checklist[i].done = cb.checked; AppState.data.modules.checklist = checklist; AppState.save(); };
+      const inp = div.querySelector('input[type="text"]');
+      inp.oninput = () => { checklist[i].text = inp.value; AppState.data.modules.checklist = checklist; AppState.save(); };
+      div.querySelector('[data-clrem]').onclick = () => { checklist.splice(i, 1); AppState.data.modules.checklist = checklist; AppState.save(); renderChecklist(); };
+    });
+  }
+  renderChecklist();
+  $('checklistAdd').onclick = () => { checklist.push({ id: uid(), text: '', done: false }); AppState.data.modules.checklist = checklist; AppState.save(); renderChecklist(); };
+
+  // ---- FLASHCARDS ----
+  let flashcards = AppState.data.modules.flashcards || [];
+  let fcIndex = 0, fcFlipped = false, fcTab = 'learn';
+
+  function renderFlashcards() {
+    // Learn mode
+    if (flashcards.length === 0) {
+      $('fcFront').textContent = 'Dodaj fiszki w trybie edycji';
+      $('fcBack').textContent = '';
+      $('fcCounter').textContent = '— 0 / 0';
+    } else {
+      const fc = flashcards[fcIndex % flashcards.length];
+      $('fcFront').textContent = fc.q || 'Pytanie';
+      $('fcBack').textContent = fc.a || 'Odpowiedź';
+      $('fcCounter').textContent = `${fcIndex + 1} / ${flashcards.length}`;
+    }
+    $('fcCard').classList.toggle('flipped', fcFlipped);
+    // Edit mode
+    const el = $('fcEditList');
+    el.innerHTML = '';
+    flashcards.forEach((fc, i) => {
+      const div = document.createElement('div');
+      div.className = 'fc-edit-item';
+      div.innerHTML = `<input type="text" value="${(fc.q||'').replace(/"/g, '&quot;')}" placeholder="Pytanie"><input type="text" value="${(fc.a||'').replace(/"/g, '&quot;')}" placeholder="Odpowiedź"><button data-fcdel="${i}" aria-label="Usuń">✕</button>`;
+      el.appendChild(div);
+      const [qIn, aIn] = div.querySelectorAll('input');
+      qIn.oninput = () => { flashcards[i].q = qIn.value; saveFC(); };
+      aIn.oninput = () => { flashcards[i].a = aIn.value; saveFC(); };
+      div.querySelector('[data-fcdel]').onclick = () => { flashcards.splice(i, 1); if (fcIndex >= flashcards.length) fcIndex = Math.max(0, flashcards.length - 1); saveFC(); renderFlashcards(); };
+    });
+  }
+  function saveFC() { AppState.data.modules.flashcards = flashcards; AppState.save(); }
+
+  $('fcCard').onclick = () => { fcFlipped = !fcFlipped; renderFlashcards(); };
+  $('fcPrev').onclick = () => { fcIndex = (fcIndex - 1 + flashcards.length) % Math.max(flashcards.length, 1); fcFlipped = false; renderFlashcards(); };
+  $('fcNext').onclick = () => { fcIndex = (fcIndex + 1) % Math.max(flashcards.length, 1); fcFlipped = false; renderFlashcards(); };
+  $('fcShuffle').onclick = () => {
+    for (let i = flashcards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [flashcards[i], flashcards[j]] = [flashcards[j], flashcards[i]]; }
+    fcIndex = 0; fcFlipped = false; saveFC(); renderFlashcards();
+    toast('Fiszki pomieszane 🔀');
+  };
+  $('fcAddBtn').onclick = () => {
+    fcTab = 'edit';
+    document.querySelectorAll('[data-fc-tab]').forEach(b => b.classList.toggle('active', b.dataset.fcTab === 'edit'));
+    $('fcLearn').style.display = 'none'; $('fcEdit').style.display = 'block';
+  };
+  $('fcEditAdd').onclick = () => { flashcards.push({ q: '', a: '' }); saveFC(); renderFlashcards(); };
+
+  document.querySelectorAll('[data-fc-tab]').forEach(btn => {
+    btn.onclick = () => {
+      fcTab = btn.dataset.fcTab;
+      document.querySelectorAll('[data-fc-tab]').forEach(b => b.classList.toggle('active', b.dataset.fcTab === fcTab));
+      $('fcLearn').style.display = fcTab === 'learn' ? 'block' : 'none';
+      $('fcEdit').style.display = fcTab === 'edit' ? 'block' : 'none';
+    };
+  });
+
+  renderFlashcards();
+
+  // ---- LOAD MODULES FROM STATE ----
+  function loadModulesFromState() {
+    // Pomodoro
+    Object.assign(pomo, AppState.data.modules.pomodoro);
+    updatePomoDisplay();
+    // Notes
+    notesEl.value = AppState.data.modules.notes || '';
+    // Checklist
+    checklist = AppState.data.modules.checklist || [];
+    renderChecklist();
+    // Flashcards
+    flashcards = AppState.data.modules.flashcards || [];
+    fcIndex = 0; fcFlipped = false;
+    renderFlashcards();
+    // Radio
+    Object.assign(radio, AppState.data.modules.radio);
+    renderRadioStations();
+    // Theme
+    applyTheme();
+    // Nodes
+    nodes = AppState.data.nodes || [];
+    connections = AppState.data.connections || [];
+    renderUploadedIcons();
+  }
+
+  // ---- MAIN LOOP ----
+  let lastTime = performance.now();
+  function loop(time) {
+    const dt = time - lastTime;
+    lastTime = time;
+    drawBackground(dt);
+    drawGraph();
+    drawMusicVis();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---- INIT: Add sample node if empty ----
+  if (nodes.length === 0) {
+    addNode(W / 2 - 100, H / 2);
+    addNode(W / 2 + 100, H / 2 - 80);
+    nodes[0].icon = '🧠'; nodes[0].name = 'Mój pierwszy węzeł';
+    nodes[1].icon = '💡'; nodes[1].name = 'Pomysł';
+    connections.push({ from: nodes[0].id, to: nodes[1].id });
+    AppState.data.nodes = nodes;
+    AppState.data.connections = connections;
+    AppState.save();
+  }
+
+  toast('🚀 StudyOS gotowe!');
+
+})();
+</script>
+</body>
+</html>
